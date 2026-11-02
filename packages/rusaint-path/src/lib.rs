@@ -42,6 +42,8 @@ pub enum PathError {
 pub struct Program {
     /// 상세 조회에 쓰는 id (`encSddpbSeq`)
     pub id: String,
+    /// 브라우저에서 여는 상세 페이지 주소. 로그인이 안 되어 있으면 통합 로그인을 거쳐 열립니다.
+    pub url: String,
     /// 모집중, 모집대기, 종료 등
     pub status: Option<String>,
     pub organization: Option<String>,
@@ -274,6 +276,7 @@ pub fn parse_program_list(html: &str, page: u32) -> ProgramPage {
             let applicants = get(&etc, "신청자").as_deref().and_then(number);
             let capacity = get(&etc, "모집정원").as_deref().and_then(number);
             Some(Program {
+                url: program_url(&id),
                 id,
                 status: first_text(li, ".label_box span"),
                 organization: types.first().cloned(),
@@ -314,6 +317,11 @@ pub fn parse_program_list(html: &str, page: u32) -> ProgramPage {
         last_page,
         items,
     }
+}
+
+/// 프로그램 상세 페이지 주소
+pub fn program_url(id: &str) -> String {
+    format!("{BASE_URL}{DETAIL_PATH}?encSddpbSeq={id}")
 }
 
 /// `data-params` JSON 문자열에서 `encSddpbSeq` 값을 꺼냅니다.
@@ -418,6 +426,10 @@ mod tests {
         assert_eq!(page.last_page, 4);
         let p = &page.items[0];
         assert_eq!(p.id, "3b6a598fca41694e9cc1a53d84486866");
+        assert_eq!(
+            p.url,
+            "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmInfo.do?encSddpbSeq=3b6a598fca41694e9cc1a53d84486866"
+        );
         assert_eq!(p.status.as_deref(), Some("모집중"));
         assert_eq!(p.organization.as_deref(), Some("진로취업팀"));
         assert_eq!(p.target.as_deref(), Some("숭실대학교"));

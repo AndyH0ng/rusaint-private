@@ -483,7 +483,7 @@ impl SsuServer {
         to_json(&json!({ "general": general, "academic_records": records }))
     }
 
-    /// SSU-PATH 에서 지금 모집 중이고 내 학년이 신청할 수 있는 비교과 프로그램 목록.
+    /// SSU-PATH 에서 지금 모집 중이고 내 학년이 신청할 수 있는 비교과 프로그램 목록. 안내할 때 각 항목의 url(상세 페이지)도 함께 알려 주세요.
     /// eligibility 는 신청 대상(학교 전체/내 학과)과 신청 신분(학생)으로 판단하며, unknown 은 단과대 단위 대상 등이라
     /// path_program_detail 로 확인해야 합니다. seats_left 가 0 이하여도 대기자 신청이 가능할 수 있습니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
@@ -527,12 +527,13 @@ impl SsuServer {
             .program_detail(&req.program_id)
             .await
             .map_err(|e| e.to_string())?;
-        to_json(
-            &pairs
+        to_json(&json!({
+            "url": rusaint_path::program_url(&req.program_id),
+            "details": pairs
                 .into_iter()
                 .map(|(k, v)| json!({ "item": k, "value": v }))
                 .collect::<Vec<_>>(),
-        )
+        }))
     }
 
     /// LMS 학기 목록과 그 학기의 수강 강의 (교수, 수강 상태).
