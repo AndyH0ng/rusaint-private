@@ -75,10 +75,8 @@ pub struct CompanionRequest {
 pub enum SeatActionKind {
     /// 좌석 배정 (seat_id 필요)
     Reserve,
-    /// 사용 중인 좌석 반납 (charge_id 필요)
+    /// 입실 확정된 좌석 반납 (charge_id 필요). 임시배정 상태에서는 서버가 거부합니다
     Return,
-    /// 시작 전 예약 취소 (charge_id 필요)
-    Cancel,
     /// 이용 시간 연장 (charge_id 필요)
     Renew,
 }
@@ -264,7 +262,8 @@ impl SsuServer {
         )
     }
 
-    /// 열람실 좌석 배정·반납·취소·연장을 준비합니다. 실행은 confirm_library_action 으로 합니다.
+    /// 열람실 좌석 배정·반납·연장을 준비합니다. 실행은 confirm_library_action 으로 합니다.
+    /// 배정된 좌석(임시배정)은 이 서버로 취소할 수 없으니 배정 전에 사용자에게 꼭 알리세요.
     #[tool(annotations(read_only_hint = true))]
     async fn prepare_library_seat_action(
         &self,
@@ -276,7 +275,11 @@ impl SsuServer {
                 let seat_id = req.seat_id.ok_or("seat_id 가 필요합니다")?;
                 (
                     Action::ReserveSeat { seat_id },
-                    format!("열람실 좌석 {seat_id} 을(를) 지금부터 배정받습니다"),
+                    format!(
+                        "열람실 좌석 {seat_id} 을(를) 지금부터 배정받습니다. \
+                         임시배정으로 시작하며 20분 안에 도서관 게이트를 통과하지 않으면 노쇼가 됩니다. \
+                         배정 후 취소는 이 도구로 할 수 없고 도서관 홈페이지나 앱에서 직접 해야 합니다"
+                    ),
                 )
             }
             SeatActionKind::Return => {
@@ -284,13 +287,6 @@ impl SsuServer {
                 (
                     Action::ReturnSeat { charge_id },
                     format!("사용 중인 좌석(이용 건 {charge_id})을 반납합니다"),
-                )
-            }
-            SeatActionKind::Cancel => {
-                let charge_id = need_charge()?;
-                (
-                    Action::CancelSeat { charge_id },
-                    format!("좌석 예약(이용 건 {charge_id})을 취소합니다"),
                 )
             }
             SeatActionKind::Renew => {
@@ -387,7 +383,10 @@ impl SsuServer {
         let (action, summary) = match req.action {
             RoomActionKind::Cancel => (
                 Action::CancelRoom { charge_id },
-                format!("스터디룸 예약 {charge_id} 을(를) 취소합니다"),
+                format!(
+                    "스터디룸 예약 {charge_id} 을(를) 취소합니다. \
+                     좌석 취소처럼 웹 방화벽에 막힐 수 있으며, 실패하면 홈페이지에서 직접 취소해야 합니다"
+                ),
             ),
             RoomActionKind::Renew => (
                 Action::RenewRoom { charge_id },
@@ -408,7 +407,6 @@ impl SsuServer {
         let result = match action {
             Action::ReserveSeat { seat_id } => client.reserve_seat(seat_id).await,
             Action::ReturnSeat { charge_id } => client.return_seat(charge_id).await,
-            Action::CancelSeat { charge_id } => client.cancel_seat(charge_id).await,
             Action::RenewSeat { charge_id } => {
                 let charge = client
                     .my_seats()

@@ -363,7 +363,10 @@ impl LibraryClient {
         )
     }
 
-    /// 아직 시작하지 않은 좌석 예약을 취소합니다.
+    /// 임시배정(입실 전) 좌석을 취소합니다.
+    ///
+    /// 2026-11 실측: 이 요청(DELETE)은 브라우저가 아닌 클라이언트에서 보내면 웹 방화벽이
+    /// 403 "Restricted Access Page" 로 막습니다. 홈페이지에서는 같은 요청이 동작합니다.
     pub async fn cancel_seat(&self, charge_id: u64) -> Result<Value, LibraryError> {
         let query = [("smufMethodCode", SMUF_METHOD.to_string())];
         Self::ok(

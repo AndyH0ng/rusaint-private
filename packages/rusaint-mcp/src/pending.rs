@@ -15,7 +15,6 @@ pub const TTL: Duration = Duration::from_secs(5 * 60);
 pub enum Action {
     ReserveSeat { seat_id: u64 },
     ReturnSeat { charge_id: u64 },
-    CancelSeat { charge_id: u64 },
     RenewSeat { charge_id: u64 },
     ReserveRoom(RoomReservation),
     CancelRoom { charge_id: u64 },
