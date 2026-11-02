@@ -30,7 +30,7 @@ use crate::usaint::{self, Usaint};
 const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사정·채플·장학금·학적), 학식 메뉴, LMS(강의·과제·자료·공지·게시판), SSU-PATH(비교과 프로그램), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
 - 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
-- 도서관·통합(SSO) 로그인이 계정 정보 오류로 한 번 거부되면 이 서버는 재시작 전까지 다시 시도하지 않습니다(계정 잠금 방지). 재시도를 반복하지 말고, 터미널에서 Keychain 항목(rusaint-library / rusaint-sso)을 고친 뒤 앱을 재시작하라고 안내하세요.
+- 로그인은 login 도구로 안내합니다. 비밀번호를 대화나 도구 인자로 받지 마세요. 계정이 거부되면 반복 시도하지 말고 로컬에서는 `rusaint-mcp login` 후 앱을 재시작하고, 원격에서는 커넥터를 다시 연결하도록 안내하세요.
 - 성적·과제·학적 같은 개인 정보는 사용자가 요청한 범위에서만 보여 주고 다른 곳에 옮기지 마세요.";
 
 type ToolResult = Result<String, String>;
@@ -272,6 +272,7 @@ pub struct SsuServer {
     pending: Arc<Pending>,
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
+    remote: bool,
 }
 
 impl SsuServer {
@@ -286,11 +287,29 @@ impl SsuServer {
             pending: Arc::new(Pending::new()),
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
+            remote: false,
         })
+    }
+
+    /// 원격 연결은 검증된 계정만 사용하며 호스트의 Keychain 을 읽지 않습니다.
+    pub fn authenticated(
+        sso: Arc<SsoCredentials>,
+        library: Option<Arc<LibraryClient>>,
+    ) -> Result<Self, String> {
+        let mut server = Self::new()?;
+        server.remote = true;
+        let _ = server.sso.set(sso);
+        if let Some(library) = library {
+            let _ = server.library.set(library);
+        }
+        Ok(server)
     }
 
     /// 도서관 클라이언트는 처음 필요할 때 Keychain 에서 계정을 읽어 만듭니다.
     async fn library(&self) -> Result<Arc<LibraryClient>, String> {
+        if self.remote && !self.library.initialized() {
+            return Err("도서관 계정이 연결되지 않았습니다. 커넥터를 다시 연결하고 도서관 계정도 입력하세요.".into());
+        }
         self.library
             .get_or_try_init(|| async {
                 let (id, password) = keychain::credentials(keychain::LIBRARY_SERVICE).await?;
@@ -386,6 +405,15 @@ impl SsuServer {
 
 #[tool_router]
 impl SsuServer {
+    /// login: 로그인 방법을 안내합니다. 비밀번호는 채팅에 입력하지 말고 터미널 또는 커넥터 연결 화면에서 입력하세요.
+    #[tool(annotations(read_only_hint = true))]
+    async fn login(&self) -> ToolResult {
+        Ok(if self.remote {
+            "현재 커넥터 연결 시 로그인한 계정을 사용 중입니다. 계정을 바꾸거나 도서관 계정을 추가하려면 Claude 설정에서 커넥터를 다시 연결해 브라우저 로그인 화면을 여세요."
+        } else {
+            "터미널에서 `rusaint-mcp login`을 실행하세요. 통합 계정만은 `rusaint-mcp login sso`, 도서관만은 `rusaint-mcp login library`, 저장 상태는 `rusaint-mcp login status`입니다. 저장 후 MCP를 사용하는 앱을 다시 시작하세요."
+        }.into())
+    }
     /// 교내 식당(soongguri.com) 하루 메뉴. 알레르기·원산지 정보는 제외됩니다.
     /// lines 는 화면 그대로의 텍스트입니다: 가격 "- 5.0" 은 5,000원, "★ 메뉴" 줄과 "메뉴, 메뉴- 6.0" 줄은 같은 메뉴입니다.
     /// slot(중식1 등)은 내용과 다를 수 있으니 section 과 본문으로 판단하세요(예: 석식1 칸의 [천원의아침밥]은 실제로 아침). 정확한 코너 이름과 배식 시간은 get_cafeteria_hours 의 corners 에 있습니다. status=closed 는 미래 날짜면 미등록일 수 있습니다.
@@ -775,6 +803,9 @@ impl SsuServer {
         &self,
         Parameters(req): Parameters<AttachmentRequest>,
     ) -> ToolResult {
+        if self.remote {
+            return Err("원격 커넥터에서는 서버 파일시스템에 자료를 다운로드할 수 없습니다. LMS에서 직접 다운로드하세요.".into());
+        }
         let client = self.lms().await?;
         let post = client
             .post(req.course_id, req.board_id, req.post_id)
@@ -813,6 +844,9 @@ impl SsuServer {
         &self,
         Parameters(req): Parameters<DownloadRequest>,
     ) -> ToolResult {
+        if self.remote {
+            return Err("원격 커넥터에서는 서버 파일시스템에 자료를 다운로드할 수 없습니다. LMS에서 직접 다운로드하세요.".into());
+        }
         let client = self.lms().await?;
         let course = self.lms_course_name(&client, req.course_id).await?;
         let modules = client
@@ -1169,7 +1203,26 @@ impl ServerHandler for SsuServer {
 
 #[cfg(test)]
 mod tests {
-    use super::safe_name;
+    use super::{SsuServer, safe_name};
+
+    #[tokio::test]
+    async fn remote_accounts_are_isolated_and_never_fall_back_to_keychain() {
+        let first =
+            SsuServer::authenticated(rusaint_sso::SsoCredentials::new("first", "unused"), None)
+                .unwrap();
+        let second =
+            SsuServer::authenticated(rusaint_sso::SsoCredentials::new("second", "unused"), None)
+                .unwrap();
+        assert_eq!(first.sso().await.unwrap().student_id(), "first");
+        assert_eq!(second.sso().await.unwrap().student_id(), "second");
+        assert!(first.library().await.is_err());
+        assert!(second.library().await.is_err());
+        assert!(!std::sync::Arc::ptr_eq(&first.pending, &second.pending));
+        assert!(!std::sync::Arc::ptr_eq(
+            &first.automation,
+            &second.automation
+        ));
+    }
 
     #[test]
     fn safe_name_blocks_paths() {

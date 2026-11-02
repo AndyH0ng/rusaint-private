@@ -11,8 +11,7 @@ pub const SSO_SERVICE: &str = "rusaint-sso";
 pub async fn credentials(service: &str) -> Result<(String, String), String> {
     let missing = || {
         format!(
-            "Keychain 에 '{service}' 항목이 없습니다. 터미널에서 \
-             `security add-generic-password -U -s {service} -a <아이디> -w` 로 저장해 주세요."
+            "Keychain 에 '{service}' 항목이 없습니다. 터미널 앱에서 `rusaint-mcp login` 을 실행해 저장해 주세요."
         )
     };
     let attributes = Command::new("security")
@@ -47,8 +46,7 @@ pub async fn credentials(service: &str) -> Result<(String, String), String> {
         .to_string();
     if password.is_empty() {
         return Err(format!(
-            "Keychain '{service}' 항목의 비밀번호가 비어 있습니다. \
-             별도 터미널 창에서 다시 저장해 주세요."
+            "Keychain '{service}' 항목의 비밀번호가 비어 있습니다. 터미널 앱에서 `rusaint-mcp login` 으로 다시 저장해 주세요."
         ));
     }
     Ok((account, password))

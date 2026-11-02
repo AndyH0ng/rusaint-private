@@ -10,8 +10,15 @@ edition.workspace = true
 readme.workspace = true
 
 [dependencies]
+axum = "0.8"
+base64 = "0.23"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+url = "2"
+tower = { version = "0.5", features = ["util"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
-rmcp = { version = "=3.5.1", features = ["server", "transport-io", "macros"] }
+rpassword = "7.5"
+rmcp = { version = "=3.5.1", features = ["server", "transport-io", "macros", "transport-streamable-http-server"] }
 rusaint = { workspace = true }
 rusaint-library = { path = "../rusaint-library" }
 rusaint-lms = { path = "../rusaint-lms" }
