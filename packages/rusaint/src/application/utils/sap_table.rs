@@ -61,8 +61,8 @@ pub(crate) async fn try_table_into_with_scroll<T: for<'body> FromSapTable<'body>
                 Some(idx) => idx,
                 None => continue,
             };
-            if !collected.contains_key(&idx) {
-                collected.insert(idx, row.try_row_into::<T>(header, &parser)?);
+            if let std::collections::btree_map::Entry::Vacant(entry) = collected.entry(idx) {
+                entry.insert(row.try_row_into::<T>(header, &parser)?);
             }
         }
         if collected.len() >= row_count {
