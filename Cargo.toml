@@ -9,6 +9,7 @@ members = [
   "packages/rusaint-mcp",
   "packages/rusaint-meal",
   "packages/rusaint-path",
+  "packages/rusaint-regulation",
   "packages/rusaint-sso",
   "uniffi-bindgen",
 ]
