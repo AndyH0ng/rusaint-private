@@ -4,6 +4,15 @@ use chrono::{Local, NaiveDate, NaiveTime, Timelike};
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{ServerHandler, schemars, tool, tool_handler, tool_router};
+use rusaint::application::chapel::ChapelApplication;
+use rusaint::application::course_grades::CourseGradesApplication;
+use rusaint::application::course_grades::model::CourseType;
+use rusaint::application::course_registration_status::CourseRegistrationStatusApplication;
+use rusaint::application::graduation_requirements::GraduationRequirementsApplication;
+use rusaint::application::personal_course_schedule::PersonalCourseScheduleApplication;
+use rusaint::application::scholarships::ScholarshipsApplication;
+use rusaint::application::student_information::StudentInformationApplication;
+use rusaint::model::SemesterType;
 use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
@@ -14,8 +23,9 @@ use tokio::sync::OnceCell;
 use crate::automation::{Automation, MAX_RENEW_HOURS};
 use crate::keychain;
 use crate::pending::{Action, Pending};
+use crate::usaint::{self, Usaint};
 
-const INSTRUCTIONS: &str = "숭실대학교 학식 메뉴, LMS(강의·과제·자료), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
+const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사정·채플·장학금·학적), 학식 메뉴, LMS(강의·과제·자료·공지·게시판), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
 - 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
 - 도서관·통합(SSO) 로그인이 계정 정보 오류로 한 번 거부되면 이 서버는 재시작 전까지 다시 시도하지 않습니다(계정 잠금 방지). 재시도를 반복하지 말고, 터미널에서 Keychain 항목(rusaint-library / rusaint-sso)을 고친 뒤 앱을 재시작하라고 안내하세요.
@@ -178,6 +188,27 @@ pub struct CommentsRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SemesterRequest {
+    /// 연도 (예: 2026). 생략하면 현재 학기
+    pub year: Option<u32>,
+    /// 1학기, 2학기, 여름학기, 겨울학기. 생략하면 현재 학기
+    pub semester: Option<String>,
+}
+
+impl SemesterRequest {
+    fn resolve(&self) -> Result<(u32, SemesterType), String> {
+        let (year, semester) = usaint::current_semester();
+        Ok((
+            self.year.unwrap_or(year),
+            match self.semester.as_deref() {
+                Some(s) => usaint::parse_semester(s)?,
+                None => semester,
+            },
+        ))
+    }
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DownloadRequest {
     pub course_id: u64,
     /// lms_materials 의 material.content_id
@@ -189,6 +220,7 @@ pub struct SsuServer {
     meal: Arc<MealClient>,
     library: Arc<OnceCell<Arc<LibraryClient>>>,
     lms: Arc<OnceCell<Arc<LmsClient>>>,
+    usaint: Arc<OnceCell<Arc<Usaint>>>,
     pending: Arc<Pending>,
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
@@ -200,6 +232,7 @@ impl SsuServer {
             meal: Arc::new(MealClient::new().map_err(|e| e.to_string())?),
             library: Arc::new(OnceCell::new()),
             lms: Arc::new(OnceCell::new()),
+            usaint: Arc::new(OnceCell::new()),
             pending: Arc::new(Pending::new()),
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
@@ -227,6 +260,17 @@ impl SsuServer {
                 LmsClient::new(id, password)
                     .map(Arc::new)
                     .map_err(|e| e.to_string())
+            })
+            .await
+            .cloned()
+    }
+
+    /// u-saint 세션도 처음 필요할 때 Keychain 의 통합 계정으로 만듭니다.
+    async fn usaint(&self) -> Result<Arc<Usaint>, String> {
+        self.usaint
+            .get_or_try_init(|| async {
+                let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
+                Ok::<_, String>(Arc::new(Usaint::new(id, password)))
             })
             .await
             .cloned()
@@ -292,6 +336,112 @@ impl SsuServer {
     async fn get_dorm_meals(&self, Parameters(req): Parameters<DateRequest>) -> ToolResult {
         let date = parse_date(req.date.as_deref())?;
         to_json(&self.meal.dorm_week(date).await.map_err(|e| e.to_string())?)
+    }
+
+    /// u-saint 학부 성적 요약(학적부·증명서 기준 평점, 이수 학점)과 학기별 성적
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_grades_summary(&self) -> ToolResult {
+        let u = self.usaint().await?;
+        let mut app = u.app::<CourseGradesApplication>().await?;
+        let recorded = app
+            .recorded_summary(CourseType::Bachelor)
+            .await
+            .map_err(usaint::err)?;
+        let certificated = app
+            .certificated_summary(CourseType::Bachelor)
+            .await
+            .map_err(usaint::err)?;
+        let semesters = app
+            .semesters(CourseType::Bachelor)
+            .await
+            .map_err(usaint::err)?;
+        to_json(
+            &json!({ "recorded": recorded, "certificated": certificated, "semesters": semesters }),
+        )
+    }
+
+    /// u-saint 특정 학기의 과목별 성적
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_semester_grades(
+        &self,
+        Parameters(req): Parameters<SemesterRequest>,
+    ) -> ToolResult {
+        let (year, semester) = req.resolve()?;
+        let u = self.usaint().await?;
+        let mut app = u.app::<CourseGradesApplication>().await?;
+        let classes = app
+            .classes(CourseType::Bachelor, year, semester, false)
+            .await
+            .map_err(usaint::err)?;
+        to_json(&json!({ "year": year, "semester": semester, "classes": classes }))
+    }
+
+    /// u-saint 개인 시간표 (요일·교시·강의실)
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_timetable(&self, Parameters(req): Parameters<SemesterRequest>) -> ToolResult {
+        let (year, semester) = req.resolve()?;
+        let u = self.usaint().await?;
+        let mut app = u.app::<PersonalCourseScheduleApplication>().await?;
+        let schedule = app.schedule(year, semester).await.map_err(usaint::err)?;
+        to_json(&json!({ "year": year, "semester": semester, "schedule": schedule }))
+    }
+
+    /// u-saint 수강신청 내역 (과목, 학점, 교수, 분반)
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_registered_lectures(
+        &self,
+        Parameters(req): Parameters<SemesterRequest>,
+    ) -> ToolResult {
+        let (year, semester) = req.resolve()?;
+        let u = self.usaint().await?;
+        let mut app = u.app::<CourseRegistrationStatusApplication>().await?;
+        let lectures: Vec<_> = app
+            .lectures(year, semester)
+            .await
+            .map_err(usaint::err)?
+            .collect();
+        to_json(&json!({ "year": year, "semester": semester, "lectures": lectures }))
+    }
+
+    /// u-saint 졸업사정표: 이수 구분별 기준 학점과 취득 학점, 남은 요건
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_graduation(&self) -> ToolResult {
+        let u = self.usaint().await?;
+        let mut app = u.app::<GraduationRequirementsApplication>().await?;
+        let student = app.student_info().await.map_err(usaint::err)?;
+        let requirements = app.requirements().await.map_err(usaint::err)?;
+        to_json(&json!({ "student": student, "requirements": requirements }))
+    }
+
+    /// u-saint 채플 이수 현황(출석·결석 기록, 이수 여부)
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_chapel(&self, Parameters(req): Parameters<SemesterRequest>) -> ToolResult {
+        let (year, semester) = req.resolve()?;
+        let u = self.usaint().await?;
+        let mut app = u.app::<ChapelApplication>().await?;
+        let info = app.information(year, semester).await.map_err(usaint::err)?;
+        to_json(&json!({ "year": year, "semester": semester, "chapel": info }))
+    }
+
+    /// u-saint 장학금 수혜 내역
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_scholarships(&self) -> ToolResult {
+        let u = self.usaint().await?;
+        let mut app = u.app::<ScholarshipsApplication>().await?;
+        to_json(&app.scholarships().await.map_err(usaint::err)?)
+    }
+
+    /// u-saint 학적 기본 정보(학과·전공·학년·학기)와 학적 변동 이력.
+    /// 주민번호·주소·연락처·사진, 계좌·가족·종교 정보는 이 서버가 내보내지 않습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_student_info(&self) -> ToolResult {
+        let u = self.usaint().await?;
+        let mut app = u.app::<StudentInformationApplication>().await?;
+        let general = app.general().map_err(usaint::err)?;
+        let general =
+            usaint::redact_student_info(serde_json::to_value(general).map_err(|e| e.to_string())?);
+        let records = app.academic_record().await.map_err(usaint::err)?;
+        to_json(&json!({ "general": general, "academic_records": records }))
     }
 
     /// LMS 학기 목록과 그 학기의 수강 강의 (교수, 수강 상태).
