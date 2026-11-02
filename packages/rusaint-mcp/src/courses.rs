@@ -138,6 +138,72 @@ pub fn next_regular(year: u32, semester: SemesterType) -> (u32, SemesterType) {
     }
 }
 
+/// 이전 정규 학기
+pub fn previous_regular(year: u32, semester: SemesterType) -> (u32, SemesterType) {
+    match semester {
+        SemesterType::Two | SemesterType::Winter => (year, SemesterType::One),
+        SemesterType::One | SemesterType::Summer => (year - 1, SemesterType::Two),
+    }
+}
+
+/// 여러 학기 개설 이력으로 만든 교육과정 한 줄
+#[derive(Debug, Serialize)]
+pub struct CurriculumEntry {
+    pub name: String,
+    /// 전기/전필/전선-학부. 학기마다 다르면 모두
+    pub categories: BTreeSet<String>,
+    pub hours_credits: BTreeSet<String>,
+    /// 수강대상 (학년·학과)
+    pub targets: BTreeSet<String>,
+    /// 개설 학기, 예: "2025 1학기"
+    pub offered: Vec<String>,
+    pub professors: BTreeSet<String>,
+    pub taken: bool,
+}
+
+/// 학기별 검색 결과를 과목명으로 묶습니다. 전기 → 전필 → 전선 → 그 밖 순서입니다.
+pub fn curriculum(
+    terms: Vec<(String, Vec<Course>)>,
+    taken: &BTreeSet<String>,
+) -> Vec<CurriculumEntry> {
+    let mut map: std::collections::BTreeMap<String, CurriculumEntry> = Default::default();
+    for (term, list) in terms {
+        for c in list {
+            let name = c.name.trim().to_string();
+            let entry = map.entry(name.clone()).or_insert_with(|| CurriculumEntry {
+                taken: is_taken(taken, &name),
+                name,
+                categories: BTreeSet::new(),
+                hours_credits: BTreeSet::new(),
+                targets: BTreeSet::new(),
+                offered: Vec::new(),
+                professors: BTreeSet::new(),
+            });
+            entry.categories.insert(c.category);
+            entry.hours_credits.insert(c.hours_credits);
+            if !c.target.trim().is_empty() {
+                entry.targets.insert(c.target.trim().to_string());
+            }
+            if !c.professor.trim().is_empty() {
+                entry.professors.insert(c.professor.trim().to_string());
+            }
+            if !entry.offered.contains(&term) {
+                entry.offered.push(term.clone());
+            }
+        }
+    }
+    let rank = |e: &CurriculumEntry| {
+        let first = e.categories.iter().next().map(String::as_str).unwrap_or("");
+        ["전기", "전필", "전선"]
+            .iter()
+            .position(|p| first.starts_with(p))
+            .unwrap_or(3)
+    };
+    let mut out: Vec<_> = map.into_values().collect();
+    out.sort_by(|a, b| rank(a).cmp(&rank(b)).then_with(|| a.name.cmp(&b.name)));
+    out
+}
+
 /// 시간표의 교양필수 이름 "[인간과성서]인문학과성서" 를 영역과 과목명으로 나눕니다.
 pub fn split_area(name: &str) -> (Option<&str>, &str) {
     let name = name.trim();
@@ -241,6 +307,18 @@ mod tests {
         assert!(matches!(
             next_regular(2026, SemesterType::Summer),
             (2026, SemesterType::Two)
+        ));
+    }
+
+    #[test]
+    fn previous_semester_skips_seasonal_terms() {
+        assert!(matches!(
+            previous_regular(2026, SemesterType::Two),
+            (2026, SemesterType::One)
+        ));
+        assert!(matches!(
+            previous_regular(2026, SemesterType::One),
+            (2025, SemesterType::Two)
         ));
     }
 

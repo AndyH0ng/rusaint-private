@@ -22,13 +22,16 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 /// 규정은 자주 바뀌지 않으므로 한 번 받은 본문을 이만큼 재사용합니다.
 const CACHE_TTL: Duration = Duration::from_secs(6 * 3600);
 
-/// 학생에게 필요한 학사 규정. (규정집 트리의 id, 짧은 이름)
-pub const ACADEMIC: [(u32, &str); 5] = [
+/// 학생에게 필요한 학사·장학 규정. (규정집 트리의 id, 짧은 이름)
+pub const REGULATIONS: [(u32, &str); 8] = [
     (89, "학칙"),
     (99, "학칙시행세칙"),
     (95, "학사관리내규"),
     (96, "연계융합전공"),
     (98, "교육과정규정"),
+    (233, "장학규정"),
+    (234, "장학금지급내규"),
+    (238, "국가장학금II내규"),
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -143,7 +146,12 @@ pub fn parse_articles(html: &str) -> Vec<Article> {
             chapter = Some(text(block));
             continue;
         }
-        let Some(title) = block.select(&TITLE).next().map(text) else {
+        let Some(title) = block
+            .select(&TITLE)
+            .next()
+            .map(text)
+            .filter(|t| !t.is_empty())
+        else {
             continue;
         };
         let body: Vec<String> = block

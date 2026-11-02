@@ -235,7 +235,8 @@ pub struct CalendarRequest {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct RegulationRequest {
-    /// 학칙, 학칙시행세칙, 학사관리내규, 연계융합전공, 교육과정규정. 생략하면 학칙시행세칙(졸업·수강·성적·전공 인정 등 학사 세부 규정)
+    /// 학칙, 학칙시행세칙, 학사관리내규, 연계융합전공, 교육과정규정, 장학규정, 장학금지급내규, 국가장학금II내규.
+    /// 생략하면 학칙시행세칙(졸업·수강·성적·전공 인정 등 학사 세부 규정). 장학금 종류·성적 기준은 장학금지급내규에 있습니다
     pub regulation: Option<String>,
     /// 조문 제목·본문에 모두 들어 있어야 할 단어들(공백 구분). 예: "졸업 학점", "타 학과 인정", "복수전공"
     pub keyword: Option<String>,
@@ -276,6 +277,16 @@ pub struct CourseOptionsRequest {
     pub collage: Option<String>,
     /// collage 와 함께 주면 그 학부의 전공 목록도 돌려줍니다
     pub department: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CurriculumRequest {
+    /// 거슬러 올라갈 정규 학기 수 (기본 4, 최대 8). 현재 학기부터 셉니다
+    pub semesters: Option<u32>,
+    /// 다른 학부를 보려면 단과대·학부·전공. 생략하면 내 소속
+    pub collage: Option<String>,
+    pub department: Option<String>,
+    pub major: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -756,6 +767,46 @@ impl SsuServer {
         }))
     }
 
+    /// 학부 교육과정표: 최근 정규 학기들의 u-saint 전공 개설 과목을 과목별로 묶어 이수구분(전기/전필/전선), 학점, 수강대상 학년, 개설 학기를 보여 줍니다.
+    /// 학교가 공식 교육과정표를 기계가 읽을 수 있는 형태로 공개하지 않아 실제 개설 이력으로 만든 것입니다. 개설되지 않은 학기의 과목은 빠지고,
+    /// 정확한 필수 여부는 학과 안내를 따르라고 알려 주세요. taken 은 졸업사정표에 쓰인(이미 들었거나 듣는 중인) 과목입니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_major_curriculum(
+        &self,
+        Parameters(req): Parameters<CurriculumRequest>,
+    ) -> ToolResult {
+        let u = self.usaint().await?;
+        let kind = match (&req.collage, &req.department) {
+            (Some(collage), Some(department)) => Kind::Major {
+                collage: collage.clone(),
+                department: department.clone(),
+                major: req.major.clone(),
+            },
+            _ => self.my_major(&u).await?,
+        };
+        let taken = {
+            let mut grad = u.app::<GraduationRequirementsApplication>().await?;
+            courses::taken(&grad.requirements().await.map_err(usaint::err)?)
+        };
+        let mut app = u.app::<CourseScheduleApplication>().await?;
+        let (mut year, mut semester) = usaint::current_semester();
+        let mut terms = Vec::new();
+        for _ in 0..req.semesters.unwrap_or(4).clamp(1, 8) {
+            let label = format!("{year} {semester}");
+            let list = courses::search(&mut app, year, semester, &kind)
+                .await
+                .unwrap_or_default();
+            terms.push((label, list));
+            (year, semester) = courses::previous_regular(year, semester);
+        }
+        let searched: Vec<_> = terms
+            .iter()
+            .map(|(t, l)| json!({"term": t, "courses": l.len()}))
+            .collect();
+        let entries = courses::curriculum(terms, &taken);
+        to_json(&json!({"searched": searched, "total": entries.len(), "courses": entries}))
+    }
+
     /// 졸업사정표에서 아직 못 채운 요건과, 그 요건을 채울 수 있는 강의 후보.
     /// 이미 들은 과목(졸업사정표에 쓰인 과목)은 빼고, 전공은 내 소속 학부 강의에서 이수구분(전기/전필/전선)으로 고릅니다.
     /// 추천 학기 시간표가 아직 없으면 1년 전 같은 학기 시간표로 대신하며 offered_basis 에 표시합니다. 이때는 실제 개설 여부가 다를 수 있다고 알려 주세요.
@@ -917,7 +968,7 @@ impl SsuServer {
         }))
     }
 
-    /// 숭실대학교 규정집(rule.ssu.ac.kr)의 학사 규정. 졸업 요건, 이수구분별 학점, 타 학과 과목 전공 인정(학칙시행세칙 제20조), 복수·부전공, 수강·성적 규정을 찾을 때 씁니다.
+    /// 숭실대학교 규정집(rule.ssu.ac.kr)의 학사·장학 규정. 졸업 요건, 이수구분별 학점, 타 학과 과목 전공 인정(학칙시행세칙 제20조), 복수·부전공, 수강·성적, 장학금 종류와 지급 기준을 찾을 때 씁니다.
     /// keyword·article 이 없으면 조문 제목 목록과 별표 목록을 돌려줍니다. 별표 표(학과별 학점 등)는 attachment 로 PDF 글자를 받는데,
     /// 표가 줄글로 풀려 병합된 칸의 숫자 순서가 섞일 수 있으니 중요한 숫자는 preview_url 원문을 확인하라고 안내하세요.
     /// 학생 본인의 졸업 기준 학점은 usaint_graduation 이 가장 정확합니다. 규정은 개정될 수 있으니 조문과 함께 url 을 알려 주세요.
@@ -927,11 +978,11 @@ impl SsuServer {
         Parameters(req): Parameters<RegulationRequest>,
     ) -> ToolResult {
         let wanted = req.regulation.as_deref().unwrap_or("학칙시행세칙").trim();
-        let Some(&(id, _)) = rusaint_regulation::ACADEMIC
+        let Some(&(id, _)) = rusaint_regulation::REGULATIONS
             .iter()
             .find(|(_, name)| *name == wanted)
         else {
-            let names: Vec<_> = rusaint_regulation::ACADEMIC
+            let names: Vec<_> = rusaint_regulation::REGULATIONS
                 .iter()
                 .map(|(_, n)| *n)
                 .collect();
@@ -945,12 +996,15 @@ impl SsuServer {
         let base = json!({"regulation": regulation.name, "url": regulation.url});
 
         if let Some(wanted) = req.attachment.as_deref().filter(|a| !a.trim().is_empty()) {
-            // "별표1" 이 "별표10" 에 걸리지 않도록 대괄호 안 번호를 먼저 비교합니다.
+            // "별표1" 이 "별표10" 에 걸리지 않도록 "[별표1]"·"(별표 1)" 처럼 괄호까지 비교합니다.
             let key = wanted.trim().replace(' ', "");
             let attachment = regulation
                 .attachments
                 .iter()
-                .find(|a| a.name.replace(' ', "").starts_with(&format!("[{key}]")))
+                .find(|a| {
+                    let name = a.name.replace(' ', "");
+                    name.starts_with(&format!("[{key}]")) || name.starts_with(&format!("({key})"))
+                })
                 .or_else(|| {
                     regulation
                         .attachments
