@@ -81,6 +81,77 @@ pub struct ModuleItem {
     pub content_data: Value,
 }
 
+/// 강의 공지 (Canvas announcement)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Announcement {
+    pub id: u64,
+    pub title: String,
+    pub posted_at: Option<String>,
+    pub user_name: Option<String>,
+    /// `read` / `unread`
+    pub read_state: Option<String>,
+    pub html_url: Option<String>,
+    /// 본문. 목록에는 없고 상세에서만 텍스트로 채워집니다.
+    pub message: Option<String>,
+}
+
+/// 과목 게시판 (LearningX board)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Board {
+    pub id: u64,
+    pub title: String,
+    /// `qna`, `normal` 등
+    #[serde(rename = "type")]
+    pub kind: Option<String>,
+    pub total_post_count: Option<u64>,
+    pub unread_post_count: Option<u64>,
+    pub latest_post_created_at: Option<String>,
+}
+
+/// 게시판 글 목록 한 페이지
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostPage {
+    #[serde(default)]
+    pub items: Vec<Post>,
+    pub pagination: Option<Pagination>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Pagination {
+    pub total: u64,
+    pub current_page: u32,
+    pub last_page: u32,
+}
+
+/// 게시글
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Post {
+    pub id: u64,
+    pub title: String,
+    pub user_name: Option<String>,
+    #[serde(default)]
+    pub is_notice: bool,
+    #[serde(default)]
+    pub is_secret: bool,
+    pub comment_count: Option<u64>,
+    pub attachment_count: Option<u64>,
+    pub created_at: Option<String>,
+    /// 본문 (텍스트로 변환됨)
+    pub content: Option<String>,
+}
+
+/// 게시글 댓글
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Comment {
+    pub id: u64,
+    pub depth: Option<u32>,
+    pub user_name: Option<String>,
+    pub content: Option<String>,
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub is_deleted: bool,
+}
+
 /// commons 에 올라간 강의 자료
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Material {

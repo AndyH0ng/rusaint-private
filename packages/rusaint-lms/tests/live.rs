@@ -78,3 +78,64 @@ async fn login_and_read() {
         std::fs::remove_file(dest).unwrap();
     }
 }
+
+#[tokio::test]
+#[ignore]
+async fn announcements_and_boards() {
+    let client = LmsClient::new(
+        std::env::var("SSO_ID").unwrap_or_default(),
+        std::env::var("SSO_PASSWORD").unwrap_or_default(),
+    )
+    .unwrap();
+    let course = 49096; // HCI
+    let announcements = client.announcements(course).await.unwrap();
+    println!("announcements: {}", announcements.len());
+    for a in announcements.iter().take(3) {
+        println!(
+            "  [{}] {} ({:?}, {:?})",
+            a.id, a.title, a.posted_at, a.read_state
+        );
+    }
+    if let Some(first) = announcements.first() {
+        let full = client.announcement(course, first.id).await.unwrap();
+        let body = full.message.unwrap_or_default();
+        println!(
+            "  body {} chars: {}",
+            body.chars().count(),
+            body.chars()
+                .take(80)
+                .collect::<String>()
+                .replace('\n', " / ")
+        );
+    }
+    let boards = client.boards(course).await.unwrap();
+    for b in &boards {
+        println!(
+            "board [{}] {} {:?} posts={:?} unread={:?}",
+            b.id, b.title, b.kind, b.total_post_count, b.unread_post_count
+        );
+    }
+    let qna = boards
+        .iter()
+        .find(|b| b.total_post_count.unwrap_or(0) > 0)
+        .unwrap();
+    let page = client.posts(course, qna.id, 1).await.unwrap();
+    println!(
+        "posts page: {:?}",
+        page.pagination
+            .as_ref()
+            .map(|p| (p.total, p.current_page, p.last_page))
+    );
+    let post = &page.items[0];
+    println!(
+        "  post [{}] {} comments={:?} content={:?}",
+        post.id,
+        post.title,
+        post.comment_count,
+        post.content
+            .as_deref()
+            .map(|c| c.chars().take(60).collect::<String>())
+    );
+    let comments = client.comments(course, qna.id, post.id).await.unwrap();
+    println!("  comments: {}", comments.len());
+}
