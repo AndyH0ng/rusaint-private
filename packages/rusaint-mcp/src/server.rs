@@ -145,6 +145,39 @@ pub struct CourseRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AnnouncementsRequest {
+    /// 강의 id. 생략하면 현재 학기 모든 강의
+    pub course_id: Option<u64>,
+    /// true 면 안 읽은 공지만
+    #[serde(default)]
+    pub unread_only: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AnnouncementRequest {
+    pub course_id: u64,
+    /// lms_announcements 의 id
+    pub announcement_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PostsRequest {
+    pub course_id: u64,
+    /// lms_boards 의 id
+    pub board_id: u64,
+    /// 페이지 (1부터). 생략하면 1
+    pub page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CommentsRequest {
+    pub course_id: u64,
+    pub board_id: u64,
+    /// lms_posts 의 items[].id
+    pub post_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DownloadRequest {
     pub course_id: u64,
     /// lms_materials 의 material.content_id
@@ -326,6 +359,92 @@ impl SsuServer {
             })
             .collect();
         to_json(&weeks)
+    }
+
+    /// LMS 강의 공지 목록(제목, 게시 시각, 읽음 여부). 본문은 lms_announcement 로 봅니다.
+    /// 이 도구로 읽어도 LMS 의 읽음 표시는 바뀌지 않습니다. posted_at 은 UTC 입니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_announcements(
+        &self,
+        Parameters(req): Parameters<AnnouncementsRequest>,
+    ) -> ToolResult {
+        let client = self.lms().await?;
+        let courses = match req.course_id {
+            Some(id) => vec![(id, None)],
+            None => {
+                let (term, _) = self.lms_term(&client, None).await?;
+                client
+                    .courses(term.id)
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .into_iter()
+                    .map(|c| (c.id, Some(c.name)))
+                    .collect()
+            }
+        };
+        let mut out = Vec::new();
+        for (course_id, name) in courses {
+            let mut list = client
+                .announcements(course_id)
+                .await
+                .map_err(|e| e.to_string())?;
+            if req.unread_only {
+                list.retain(|a| a.read_state.as_deref() == Some("unread"));
+            }
+            out.push(json!({ "course_id": course_id, "course": name, "announcements": list }));
+        }
+        to_json(&out)
+    }
+
+    /// LMS 강의 공지 하나의 본문(텍스트). 읽음 표시는 바뀌지 않습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_announcement(
+        &self,
+        Parameters(req): Parameters<AnnouncementRequest>,
+    ) -> ToolResult {
+        let client = self.lms().await?;
+        to_json(
+            &client
+                .announcement(req.course_id, req.announcement_id)
+                .await
+                .map_err(|e| e.to_string())?,
+        )
+    }
+
+    /// 과목 게시판(Q&A, 팀 활동 게시판 등) 목록과 글 수·안 읽은 글 수
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_boards(&self, Parameters(req): Parameters<CourseRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        to_json(
+            &client
+                .boards(req.course_id)
+                .await
+                .map_err(|e| e.to_string())?,
+        )
+    }
+
+    /// 과목 게시판 글 목록(본문 포함, 텍스트). 다른 학생이 쓴 글이 섞여 있으니 요청받은 범위만 요약하고 다른 곳에 옮기지 마세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_posts(&self, Parameters(req): Parameters<PostsRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        to_json(
+            &client
+                .posts(req.course_id, req.board_id, req.page.unwrap_or(1))
+                .await
+                .map_err(|e| e.to_string())?,
+        )
+    }
+
+    /// 과목 게시판 글의 댓글
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_comments(&self, Parameters(req): Parameters<CommentsRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        to_json(
+            &client
+                .comments(req.course_id, req.board_id, req.post_id)
+                .await
+                .map_err(|e| e.to_string())?,
+        )
     }
 
     /// LMS 자료 파일을 ~/Downloads/ssu-lms/<강의명>/ (또는 RUSAINT_DOWNLOAD_DIR) 에 내려받습니다. 같은 이름의 파일이 있으면 덮어쓰지 않습니다.
