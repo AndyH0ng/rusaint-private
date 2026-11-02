@@ -1,7 +1,9 @@
-//! 빈자리 대기 예약과 자동 연장. MCP 서버 프로세스가 살아 있는 동안만 동작합니다.
+//! 자동 연장. MCP 서버 프로세스가 살아 있는 동안만 동작합니다.
 //!
-//! 학교 서버 부담과 이용 규정을 고려해 조회 간격은 60초 이상, 대기는 최대 60분,
-//! 자동 연장은 최대 12시간으로 제한합니다. 동시에 대기 1건, 자동 연장 1건만 돌립니다.
+//! 학교 서버 부담을 고려해 조회 간격은 60초, 최대 12시간으로 제한하고 동시에 1건만 돌립니다.
+//!
+//! 빈자리 대기 자동 배정은 넣지 않습니다. PC 배정은 임시배정으로 시작해 20분 안에 게이트를
+//! 통과하지 않으면 노쇼가 되고, 좌석 취소(DELETE)는 웹 방화벽에 막혀 원격으로 되돌릴 수 없습니다.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,7 +16,6 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(60);
-pub const MAX_WAIT_MINUTES: u64 = 60;
 pub const MAX_RENEW_HOURS: u64 = 12;
 /// 같은 예약의 연장을 실패한 뒤 다시 시도하기까지 기다리는 시간
 const RENEW_RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
@@ -68,34 +69,10 @@ struct Job {
 
 #[derive(Default)]
 pub struct Automation {
-    wait: Mutex<Option<Job>>,
     renew: Mutex<Option<Job>>,
 }
 
 impl Automation {
-    /// 지정한 열람실 중 빈자리가 생기면 첫 빈 좌석을 바로 배정받습니다. 등록 자체가 예약 동의입니다.
-    pub async fn start_wait(
-        &self,
-        client: Arc<LibraryClient>,
-        room_ids: Vec<u64>,
-        minutes: u64,
-    ) -> Result<JobStatus, String> {
-        let mut slot = self.wait.lock().await;
-        if slot.as_ref().is_some_and(|j| !j.handle.is_finished()) {
-            return Err("이미 진행 중인 빈자리 대기가 있습니다. 먼저 취소해 주세요".into());
-        }
-        let duration = Duration::from_secs(minutes.clamp(1, MAX_WAIT_MINUTES) * 60);
-        let status = Arc::new(Mutex::new(JobStatus::new("seat_wait", duration)));
-        status
-            .lock()
-            .await
-            .push(format!("대기 시작: 열람실 {room_ids:?}"));
-        let handle = tokio::spawn(wait_loop(client, room_ids, duration, status.clone()));
-        let snapshot = status.lock().await.clone();
-        *slot = Some(Job { status, handle });
-        Ok(snapshot)
-    }
-
     /// 내 좌석·스터디룸이 연장 가능해지면 연장합니다.
     pub async fn start_renew(
         &self,
@@ -115,13 +92,8 @@ impl Automation {
         Ok(snapshot)
     }
 
-    pub async fn stop(&self, kind: &str) -> Result<JobStatus, String> {
-        let slot = match kind {
-            "seat_wait" => &self.wait,
-            "auto_renew" => &self.renew,
-            _ => return Err(format!("알 수 없는 작업: {kind}")),
-        };
-        let slot = slot.lock().await;
+    pub async fn stop_renew(&self) -> Result<JobStatus, String> {
+        let slot = self.renew.lock().await;
         let job = slot.as_ref().ok_or("진행 중인 작업이 없습니다")?;
         job.handle.abort();
         let mut status = job.status.lock().await;
@@ -131,73 +103,12 @@ impl Automation {
         Ok(status.clone())
     }
 
-    pub async fn statuses(&self) -> Vec<JobStatus> {
-        let mut out = Vec::new();
-        for slot in [&self.wait, &self.renew] {
-            if let Some(job) = slot.lock().await.as_ref() {
-                out.push(job.status.lock().await.clone());
-            }
-        }
-        out
-    }
-}
-
-async fn wait_loop(
-    client: Arc<LibraryClient>,
-    room_ids: Vec<u64>,
-    duration: Duration,
-    status: Arc<Mutex<JobStatus>>,
-) {
-    let deadline = tokio::time::Instant::now() + duration;
-    loop {
-        status.lock().await.checks += 1;
-        match try_reserve(&client, &room_ids).await {
-            Ok(Some(message)) => return status.lock().await.finish(message),
-            Ok(None) => {}
-            Err(StopWaiting(message)) => return status.lock().await.finish(message),
-        }
-        if tokio::time::Instant::now() + POLL_INTERVAL > deadline {
-            return status
-                .lock()
-                .await
-                .finish("시간 안에 빈자리가 나지 않아 종료");
-        }
-        tokio::time::sleep(POLL_INTERVAL).await;
-    }
-}
-
-struct StopWaiting(String);
-
-/// 빈자리가 있으면 배정받고 결과 메시지를 돌려줍니다.
-async fn try_reserve(
-    client: &LibraryClient,
-    room_ids: &[u64],
-) -> Result<Option<String>, StopWaiting> {
-    let stop = |e: rusaint_library::LibraryError| StopWaiting(format!("중단: {e}"));
-    if !client.my_seats().await.map_err(stop)?.is_empty() {
-        return Err(StopWaiting("이미 이용 중인 좌석이 있어 대기를 끝냄".into()));
-    }
-    // 공개 집계로 먼저 거르고, 빈자리가 있는 열람실만 좌석 목록을 봅니다.
-    let rooms = client.seat_rooms().await.map_err(stop)?;
-    for room in rooms
-        .iter()
-        .filter(|r| room_ids.contains(&r.id) && r.seats.available > 0 && r.unable_message.is_none())
-    {
-        let seats = client.seats(room.id).await.map_err(stop)?;
-        for seat in seats
-            .iter()
-            .filter(|s| s.is_active && s.is_reservable && !s.is_occupied)
-            .take(3)
-        {
-            if client.reserve_seat(seat.id).await.is_ok() {
-                return Ok(Some(format!(
-                    "{} {}번 좌석 배정 완료",
-                    room.name, seat.code
-                )));
-            }
+    pub async fn renew_status(&self) -> Option<JobStatus> {
+        match self.renew.lock().await.as_ref() {
+            Some(job) => Some(job.status.lock().await.clone()),
+            None => None,
         }
     }
-    Ok(None)
 }
 
 async fn renew_loop(client: Arc<LibraryClient>, duration: Duration, status: Arc<Mutex<JobStatus>>) {

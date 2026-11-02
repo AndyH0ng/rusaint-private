@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::OnceCell;
 
-use crate::automation::{Automation, MAX_RENEW_HOURS, MAX_WAIT_MINUTES};
+use crate::automation::{Automation, MAX_RENEW_HOURS};
 use crate::keychain;
 use crate::pending::{Action, Pending};
 
@@ -18,7 +18,8 @@ const INSTRUCTIONS: &str = "숭실대학교 학식 메뉴와 중앙도서관(열
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM 입니다. 생략하면 오늘입니다.
 - 학식 status 가 closed 여도 미래 날짜라면 메뉴가 아직 등록되지 않았을 수 있습니다.
 - 도서관 쓰기 작업은 prepare_* 로 내용을 만든 뒤 사용자에게 보여 주고, 사용자가 동의하면 confirm_library_action 으로 실행합니다. 사용자의 명시적 동의 없이 confirm 하지 마세요.
-- library_wait_for_seat 와 library_auto_renew 는 등록 자체가 실행 동의이므로 사용자가 직접 요청했을 때만 켭니다.";
+- library_auto_renew 는 켜는 것 자체가 실행 동의이므로 사용자가 직접 요청했을 때만 켭니다.
+- PC 좌석 배정은 임시배정으로 시작하며 20분 안에 도서관 게이트를 통과하지 않으면 노쇼가 됩니다. 사용자가 곧 도서관에 갈 때만 배정하세요.";
 
 type ToolResult = Result<String, String>;
 
@@ -128,23 +129,9 @@ pub struct ConfirmRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct WaitRequest {
-    /// 대기할 열람실 id 목록
-    pub room_ids: Vec<u64>,
-    /// 최대 대기 시간(분, 1~60). 기본 30
-    pub minutes: Option<u64>,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct AutoRenewRequest {
     /// 자동 연장을 유지할 시간(시간, 1~12). 기본 4
     pub hours: Option<u64>,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct StopRequest {
-    /// seat_wait 또는 auto_renew
-    pub kind: String,
 }
 
 #[derive(Clone)]
@@ -234,7 +221,7 @@ impl SsuServer {
         let seats = client.seats(req.room_id).await.map_err(|e| e.to_string())?;
         let free: Vec<_> = seats
             .iter()
-            .filter(|s| s.is_active && s.is_reservable && !s.is_occupied)
+            .filter(|s| s.is_free())
             .map(|s| json!({ "seat_id": s.id, "code": s.code, "type": s.seat_type.as_ref().map(|t| &t.name) }))
             .collect();
         to_json(&json!({ "total": seats.len(), "free_count": free.len(), "free": free }))
@@ -449,23 +436,6 @@ impl SsuServer {
         to_json(&json!({ "done": summary, "result": data }))
     }
 
-    /// 지정한 열람실에 빈자리가 생기면 자동으로 좌석을 배정받습니다 (60초 간격, 최대 60분).
-    /// 호출 자체가 예약 동의이므로 사용자가 직접 요청했을 때만 사용하세요.
-    #[tool(annotations(destructive_hint = true, open_world_hint = true))]
-    async fn library_wait_for_seat(&self, Parameters(req): Parameters<WaitRequest>) -> ToolResult {
-        if req.room_ids.is_empty() {
-            return Err("room_ids 가 비어 있습니다".into());
-        }
-        let client = self.library().await?;
-        let minutes = req.minutes.unwrap_or(30).min(MAX_WAIT_MINUTES);
-        to_json(
-            &self
-                .automation
-                .start_wait(client, req.room_ids, minutes)
-                .await?,
-        )
-    }
-
     /// 내 좌석·스터디룸이 연장 가능해지면 자동으로 연장합니다 (60초 간격, 최대 12시간).
     /// 도착 확인이 GPS·비콘·RF 태그 방식이면 연장하지 않고 기록만 남깁니다.
     #[tool(annotations(destructive_hint = true, open_world_hint = true))]
@@ -478,19 +448,16 @@ impl SsuServer {
         to_json(&self.automation.start_renew(client, hours).await?)
     }
 
-    /// 빈자리 대기·자동 연장 작업의 상태와 기록
+    /// 자동 연장 작업의 상태와 기록
     #[tool(annotations(read_only_hint = true))]
-    async fn library_automation_status(&self) -> ToolResult {
-        to_json(&self.automation.statuses().await)
+    async fn library_auto_renew_status(&self) -> ToolResult {
+        to_json(&self.automation.renew_status().await)
     }
 
-    /// 빈자리 대기(seat_wait) 또는 자동 연장(auto_renew)을 중지합니다.
+    /// 자동 연장을 중지합니다.
     #[tool(annotations(read_only_hint = false, destructive_hint = false))]
-    async fn library_stop_automation(
-        &self,
-        Parameters(req): Parameters<StopRequest>,
-    ) -> ToolResult {
-        to_json(&self.automation.stop(&req.kind).await?)
+    async fn library_stop_auto_renew(&self) -> ToolResult {
+        to_json(&self.automation.stop_renew().await?)
     }
 }
 
