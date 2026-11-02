@@ -280,6 +280,16 @@ pub struct CourseOptionsRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CourseInfoRequest {
+    /// 과목명들 (최대 8개). 예: ["HCI", "데이터베이스"]
+    pub names: Vec<String>,
+    pub year: Option<u32>,
+    pub semester: Option<String>,
+    /// 과목마다 살펴볼 분반 수 (기본 3, 최대 8). 분반마다 강의계획서를 따로 읽어 느립니다
+    pub max_sections: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CurriculumRequest {
     /// 거슬러 올라갈 정규 학기 수 (기본 4, 최대 8). 현재 학기부터 셉니다
     pub semesters: Option<u32>,
@@ -765,6 +775,101 @@ impl SsuServer {
             "required_electives": required_electives,
             "optional_elective_areas": optional_elective_areas,
         }))
+    }
+
+    /// 과목별 여석·P/F·평가 방식·내 전공 인정 여부. 장바구니에 담을 과목을 확인할 때 씁니다.
+    /// pass_fail 은 강의계획서의 성적 입력 방식("Pass/Fail 입력")으로 판단하며, 계획서가 없으면 null 입니다.
+    /// counts_for_my_major 는 강의 상세의 전공별 이수구분에 내 주전공의 전기/전필/전선이 있거나, 그 학기 타전공인정과목 목록에 있으면 true 입니다.
+    /// recognized_other_major=true 면 타 학과 과목이 내 전공으로 인정되는 경우이니 소속 학과 최소 이수학점(별표6)과 복수전공 여부(제20조)를 함께 안내하세요.
+    /// 없으면 교양(교필/교선) 또는 일반선택으로 들어갑니다. 여석은 조회 시점 값입니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_course_info(
+        &self,
+        Parameters(req): Parameters<CourseInfoRequest>,
+    ) -> ToolResult {
+        if req.names.is_empty() || req.names.len() > 8 {
+            return Err("names 는 1~8개여야 합니다".into());
+        }
+        let (year, semester) = SemesterRequest {
+            year: req.year,
+            semester: req.semester.clone(),
+        }
+        .resolve()?;
+        let u = self.usaint().await?;
+        let Kind::Major {
+            collage,
+            department,
+            major,
+        } = self.my_major(&u).await?
+        else {
+            unreachable!("my_major 는 전공 검색 조건을 돌려줍니다")
+        };
+        let keyword = courses::major_keyword(&department, major.as_deref());
+        let max_sections = req.max_sections.unwrap_or(3).clamp(1, 8);
+        let mut app = u.app::<CourseScheduleApplication>().await?;
+        // 타 학과 과목은 강의 상세에 내 전공 이수구분이 없어도 타전공인정 목록에 있으면 인정됩니다.
+        let recognized: std::collections::HashMap<String, String> = courses::search(
+            &mut app,
+            year,
+            semester,
+            &Kind::RecognizedOtherMajor {
+                collage,
+                department,
+                major,
+            },
+        )
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|c| (c.code, c.category))
+        .collect();
+        let mut results = Vec::new();
+        for name in &req.names {
+            let name = name.trim();
+            let found =
+                courses::search(&mut app, year, semester, &Kind::Lecture(name.to_string())).await?;
+            // 같은 이름이 있으면 그것만, 없으면 이름에 검색어가 들어간 것 전부
+            let exact: Vec<_> = found.iter().filter(|c| c.name.trim() == name).collect();
+            let picked = if exact.is_empty() {
+                found.iter().collect()
+            } else {
+                exact
+            };
+            let total = picked.len();
+            let mut sections = Vec::new();
+            for c in picked.into_iter().take(max_sections) {
+                let categories = app
+                    .lecture_detail(&c.code)
+                    .await
+                    .map(|d| d.categories)
+                    .unwrap_or_default();
+                let syllabus = app.lecture_syllabus(&c.code).await.ok();
+                let mine = courses::my_major_category(&categories, &keyword).map(str::to_string);
+                let other = recognized.get(&c.code);
+                sections.push(json!({
+                    "code": c.code,
+                    "name": c.name,
+                    "division": c.division,
+                    "professor": c.professor,
+                    "schedule": c.schedule,
+                    "hours_credits": c.hours_credits,
+                    "enrolled": c.enrolled,
+                    "seats_left": c.seats_left,
+                    "target": c.target,
+                    "categories": categories,
+                    "counts_for_my_major": mine.is_some() || other.is_some(),
+                    "my_major_category": mine.clone().or_else(|| other.cloned()),
+                    "recognized_other_major": mine.is_none() && other.is_some(),
+                    "pass_fail": syllabus.as_ref().map(|s| s.grading_scale.contains("Pass")),
+                    "grading_scale": syllabus.as_ref().map(|s| s.grading_scale.clone()),
+                    "evaluation_type": syllabus.as_ref().map(|s| s.evaluation_type.clone()),
+                }));
+            }
+            results.push(json!({"query": name, "sections_found": total, "sections": sections}));
+        }
+        to_json(
+            &json!({"year": year, "semester": semester, "my_major": keyword, "courses": results}),
+        )
     }
 
     /// 학부 교육과정표: 최근 정규 학기들의 u-saint 전공 개설 과목을 과목별로 묶어 이수구분(전기/전필/전선), 학점, 수강대상 학년, 개설 학기를 보여 줍니다.

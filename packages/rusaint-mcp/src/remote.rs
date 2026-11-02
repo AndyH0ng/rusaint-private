@@ -270,19 +270,37 @@ async fn authorize(
 ) -> Result<Html<String>, HttpError> {
     let mut data = app.data.lock().await;
     data.prune();
-    if !data
+    // 어느 검사에서 막혔는지만 남깁니다(code_challenge·state 값은 남기지 않음).
+    let failed = if !data.clients.contains_key(&req.client_id) {
+        Some("등록되지 않은 client_id")
+    } else if !data
         .clients
         .get(&req.client_id)
         .is_some_and(|c| c.value.contains(&req.redirect_uri))
-        || req.response_type != "code"
-        || req.code_challenge_method != "S256"
+    {
+        Some("등록하지 않은 redirect_uri")
+    } else if req.response_type != "code" {
+        Some("response_type")
+    } else if req.code_challenge_method != "S256"
         || URL_SAFE_NO_PAD
             .decode(&req.code_challenge)
             .map_or(true, |v| v.len() != 32)
-        || req.resource != format!("{}/mcp", app.base)
-        || req.scope.as_deref().is_some_and(|v| v != "ssu")
-        || req.state.as_ref().is_some_and(|v| v.len() > 2048)
     {
+        Some("PKCE")
+    } else if req.resource != format!("{}/mcp", app.base) {
+        Some("resource")
+    } else if req.scope.as_deref().is_some_and(|v| v != "ssu") {
+        Some("scope")
+    } else if req.state.as_ref().is_some_and(|v| v.len() > 2048) {
+        Some("state 길이")
+    } else {
+        None
+    };
+    if let Some(reason) = failed {
+        eprintln!(
+            "authorize 거부: {reason} (redirect_uri={:?} resource={:?} scope={:?})",
+            req.redirect_uri, req.resource, req.scope
+        );
         return Err(invalid());
     }
     if data.logins.len() >= 256 {

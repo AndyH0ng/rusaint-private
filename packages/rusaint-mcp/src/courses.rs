@@ -266,6 +266,25 @@ pub fn matches_major_kind(requirement_category: &str, lecture_category: &str) ->
     }
 }
 
+/// 상세의 이수구분과 비교할 내 전공 이름. "글로벌미디어학부" → "글로벌미디어"
+pub fn major_keyword(department: &str, major: Option<&str>) -> String {
+    let name = major.filter(|m| !m.trim().is_empty()).unwrap_or(department);
+    let name = name.trim();
+    ["학부", "학과", "전공"]
+        .iter()
+        .find_map(|s| name.strip_suffix(s))
+        .unwrap_or(name)
+        .to_string()
+}
+
+/// 강의 상세의 전공별 이수구분 중 내 주전공 학점(전기/전필/전선)으로 들어가는 것
+pub fn my_major_category<'a>(categories: &'a [String], keyword: &str) -> Option<&'a str> {
+    categories
+        .iter()
+        .map(String::as_str)
+        .find(|c| ["전기", "전필", "전선"].iter().any(|p| c.starts_with(p)) && c.contains(keyword))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,6 +339,25 @@ mod tests {
             previous_regular(2026, SemesterType::One),
             (2025, SemesterType::Two)
         ));
+    }
+
+    #[test]
+    fn my_major_is_found_among_categories() {
+        assert_eq!(major_keyword("글로벌미디어학부", None), "글로벌미디어");
+        assert_eq!(
+            major_keyword("전자정보공학부", Some("IT융합전공")),
+            "IT융합"
+        );
+        let categories = vec![
+            "전선-글로벌미디어/컨텐츠공학".to_string(),
+            "복선-글로벌미디어".to_string(),
+        ];
+        assert_eq!(
+            my_major_category(&categories, "글로벌미디어"),
+            Some("전선-글로벌미디어/컨텐츠공학")
+        );
+        assert_eq!(my_major_category(&categories[1..], "글로벌미디어"), None);
+        assert_eq!(my_major_category(&categories, "컴퓨터"), None);
     }
 
     #[test]
