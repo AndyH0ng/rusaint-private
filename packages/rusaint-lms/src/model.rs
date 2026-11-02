@@ -140,6 +140,30 @@ pub struct Post {
     pub content: Option<String>,
 }
 
+/// 게시글 첨부파일
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Attachment {
+    pub id: u64,
+    pub filename: String,
+    pub filesize: Option<u64>,
+    /// Canvas 파일 다운로드 주소. 접근 권한 값(verifier)이 들어 있으니 밖으로 내보내지 마세요.
+    #[serde(skip_serializing)]
+    pub url: String,
+}
+
+/// 게시글 상세
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostDetail {
+    pub id: u64,
+    pub title: String,
+    pub user_name: Option<String>,
+    pub content: Option<String>,
+    #[serde(default)]
+    pub attachments: Vec<Attachment>,
+    pub comment_count: Option<u64>,
+    pub created_at: Option<String>,
+}
+
 /// 게시글 댓글
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Comment {
@@ -195,6 +219,23 @@ impl ModuleItem {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn attachment_url_is_not_serialized() {
+        let post: PostDetail = serde_json::from_value(json!({
+            "id": 1, "title": "t", "attachments": [{
+                "id": 9, "filename": "a.pdf", "filesize": 10,
+                "url": "https://canvas.ssu.ac.kr/files/1/download?download_frd=1&verifier=secret"
+            }]
+        }))
+        .unwrap();
+        assert!(post.attachments[0].url.contains("verifier"));
+        let out = serde_json::to_string(&post).unwrap();
+        assert!(
+            !out.contains("verifier") && !out.contains("\"url\""),
+            "{out}"
+        );
+    }
 
     #[test]
     fn material_from_attendance_item() {

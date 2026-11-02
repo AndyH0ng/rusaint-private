@@ -463,11 +463,52 @@ impl LmsClient {
             )));
         }
 
+        self.save(url, dest).await
+    }
+
+    /// 게시글 하나 (본문 텍스트와 첨부 목록). 실측상 이 조회는 조회수·읽음 표시를 바꾸지 않습니다.
+    pub async fn post(
+        &self,
+        course_id: u64,
+        board_id: u64,
+        post_id: u64,
+    ) -> Result<PostDetail, LmsError> {
+        let mut post: PostDetail = self
+            .get(
+                &format!("/learningx/api/v1/learningx_board/courses/{course_id}/boards/{board_id}/posts/{post_id}"),
+                &[],
+            )
+            .await?;
+        post.content = post.content.as_deref().map(html_to_text);
+        Ok(post)
+    }
+
+    /// 게시글 첨부파일을 `dest` 에 저장합니다. 첨부 주소는 Canvas 파일 링크(verifier 포함)이며 canvas.ssu.ac.kr 만 받습니다.
+    pub async fn download_attachment(
+        &self,
+        attachment: &Attachment,
+        dest: &Path,
+    ) -> Result<u64, LmsError> {
+        let url = Url::parse(&attachment.url)
+            .map_err(|_| LmsError::NoDownload(attachment.filename.clone()))?;
+        if url.scheme() != "https" || url.host_str() != Some("canvas.ssu.ac.kr") {
+            return Err(LmsError::NoDownload(format!(
+                "{}: 예상하지 못한 주소",
+                attachment.filename
+            )));
+        }
+        self.save(url, dest).await
+    }
+
+    /// 응답을 `<dest>.part` 에 받은 뒤 완료되면 이름을 바꿉니다.
+    async fn save(&self, url: Url, dest: &Path) -> Result<u64, LmsError> {
         let mut response = self.api.get(url).send().await?.error_for_status()?;
         if let Some(parent) = dest.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
-        let partial = dest.with_extension("part");
+        let mut partial = dest.as_os_str().to_owned();
+        partial.push(".part");
+        let partial = std::path::PathBuf::from(partial);
         let mut file = tokio::fs::File::create(&partial).await?;
         let mut written = 0u64;
         while let Some(chunk) = response.chunk().await? {
