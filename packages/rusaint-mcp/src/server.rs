@@ -782,6 +782,8 @@ impl SsuServer {
     /// counts_for_my_major 는 강의 상세의 전공별 이수구분에 내 주전공의 전기/전필/전선이 있거나, 그 학기 타전공인정과목 목록에 있으면 true 입니다.
     /// recognized_other_major=true 면 타 학과 과목이 내 전공으로 인정되는 경우이니 소속 학과 최소 이수학점(별표6)과 복수전공 여부(제20조)를 함께 안내하세요.
     /// 없으면 교양(교필/교선) 또는 일반선택으로 들어갑니다. 여석은 조회 시점 값입니다.
+    /// syllabus_url 은 브라우저에서 강의계획서를 여는 학교 OZ 뷰어 주소입니다. 로그인 없이 열리지만 학교 서버가 요구해서 학번이 들어 있으니,
+    /// 본인에게만 보여 주고 다른 사람과 공유할 때는 주의하라고 알려 주세요.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn usaint_course_info(
         &self,
@@ -866,6 +868,7 @@ impl SsuServer {
                     "pass_fail": syllabus.as_ref().map(|s| s.grading_scale.contains("Pass")),
                     "grading_scale": syllabus.as_ref().map(|s| s.grading_scale.clone()),
                     "evaluation_type": syllabus.as_ref().map(|s| s.evaluation_type.clone()),
+                    "syllabus_url": syllabus.as_ref().and_then(|s| s.viewer_url.clone()),
                 }));
             }
             results.push(json!({"query": name, "sections_found": total, "sections": sections}));

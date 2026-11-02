@@ -471,7 +471,8 @@ impl<'app> CourseScheduleApplication {
         }
 
         let response = fetch_data_module(&oz_params, Some(self.client.http_client())).await?;
-        let syllabus = LectureSyllabus::from_datasets(&response.datasets)?;
+        let mut syllabus = LectureSyllabus::from_datasets(&response.datasets)?;
+        syllabus.viewer_url = Some(oz_url);
         Ok(syllabus)
     }
 

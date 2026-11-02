@@ -45,6 +45,8 @@ pub struct LectureSyllabus {
     pub grading_scale: String,
     /// 평가 방식 (예: "상대평가", "절대평가")
     pub evaluation_type: String,
+    /// 브라우저에서 강의계획서를 여는 OZ 뷰어 주소. 로그인 없이 열리지만 조회한 사용자의 학번이 들어 있습니다.
+    pub viewer_url: Option<String>,
     /// 성적평가 항목
     pub grading_items: Vec<SyllabusGradingItem>,
     /// 학습목표
@@ -195,6 +197,7 @@ impl LectureSyllabus {
             absence_policy,
             grading_scale,
             evaluation_type,
+            viewer_url: None,
             grading_items,
             learning_objectives,
             weekly_schedule,
