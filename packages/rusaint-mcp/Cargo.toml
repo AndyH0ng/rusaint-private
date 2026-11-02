@@ -1,0 +1,19 @@
+[package]
+name = "rusaint-mcp"
+description = "MCP server for Soongsil University cafeteria menus and the central library"
+version.workspace = true
+keywords.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+rmcp = { version = "=3.5.1", features = ["server", "transport-io", "macros"] }
+rusaint-library = { path = "../rusaint-library" }
+rusaint-meal = { path = "../rusaint-meal" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "process"] }
