@@ -237,6 +237,23 @@ pub struct PathDetailRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PostRequest {
+    pub course_id: u64,
+    pub board_id: u64,
+    /// lms_posts 의 items[].id
+    pub post_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AttachmentRequest {
+    pub course_id: u64,
+    pub board_id: u64,
+    pub post_id: u64,
+    /// lms_post 의 attachments[].id
+    pub attachment_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DownloadRequest {
     pub course_id: u64,
     /// lms_materials 의 material.content_id
@@ -322,6 +339,19 @@ impl SsuServer {
             .get_or_try_init(|| async { Ok::<_, String>(Arc::new(PathClient::new(sso))) })
             .await
             .cloned()
+    }
+
+    /// 현재 학기 강의 이름 (다운로드 폴더 이름용). 못 찾으면 강의 id 를 씁니다.
+    async fn lms_course_name(&self, client: &LmsClient, course_id: u64) -> Result<String, String> {
+        let (term, _) = self.lms_term(client, None).await?;
+        Ok(client
+            .courses(term.id)
+            .await
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|c| c.id == course_id)
+            .map(|c| c.name)
+            .unwrap_or_else(|| course_id.to_string()))
     }
 
     /// term_id 가 없으면 현재 정규 학기를 고릅니다.
@@ -698,7 +728,7 @@ impl SsuServer {
         )
     }
 
-    /// 과목 게시판 글 목록(본문 포함, 텍스트). 다른 학생이 쓴 글이 섞여 있으니 요청받은 범위만 요약하고 다른 곳에 옮기지 마세요.
+    /// 과목 게시판 글 목록(본문 포함, 텍스트). 첨부파일은 lms_post 로 확인합니다. 다른 학생이 쓴 글이 섞여 있으니 요청받은 범위만 요약하고 다른 곳에 옮기지 마세요.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn lms_posts(&self, Parameters(req): Parameters<PostsRequest>) -> ToolResult {
         let client = self.lms().await?;
@@ -722,6 +752,56 @@ impl SsuServer {
         )
     }
 
+    /// 과목 게시판 글 하나의 본문과 첨부파일 목록(파일명·크기·id). 조회해도 조회수·읽음 표시는 바뀌지 않습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_post(&self, Parameters(req): Parameters<PostRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        to_json(
+            &client
+                .post(req.course_id, req.board_id, req.post_id)
+                .await
+                .map_err(|e| e.to_string())?,
+        )
+    }
+
+    /// 과목 게시판 첨부파일을 ~/Downloads/ssu-lms/<강의명>/게시판/ (또는 RUSAINT_DOWNLOAD_DIR) 에 내려받습니다.
+    /// 같은 이름의 파일이 있으면 덮어쓰지 않습니다. 다른 학생이 올린 파일일 수 있으니 요청받은 파일만 받으세요.
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        open_world_hint = true
+    ))]
+    async fn lms_download_post_attachment(
+        &self,
+        Parameters(req): Parameters<AttachmentRequest>,
+    ) -> ToolResult {
+        let client = self.lms().await?;
+        let post = client
+            .post(req.course_id, req.board_id, req.post_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let attachment = post
+            .attachments
+            .iter()
+            .find(|a| a.id == req.attachment_id)
+            .ok_or("이 글에 해당 첨부파일이 없습니다")?;
+        let course = self.lms_course_name(&client, req.course_id).await?;
+        let dest = download_root()?
+            .join(safe_name(&course))
+            .join("게시판")
+            .join(safe_name(&attachment.filename));
+        if dest.exists() {
+            return to_json(
+                &json!({ "saved": false, "reason": "이미 같은 이름의 파일이 있습니다", "path": dest }),
+            );
+        }
+        let bytes = client
+            .download_attachment(attachment, &dest)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&json!({ "saved": true, "path": dest, "bytes": bytes, "post": post.title }))
+    }
+
     /// LMS 자료 파일을 ~/Downloads/ssu-lms/<강의명>/ (또는 RUSAINT_DOWNLOAD_DIR) 에 내려받습니다. 같은 이름의 파일이 있으면 덮어쓰지 않습니다.
     /// lms_materials 의 size_bytes 는 실제 원본 파일보다 훨씬 작게 나올 수 있습니다(실측 0.7MB → 22.7MB). 영상(movie)은 특히 클 수 있으니 미리 알려 주세요.
     #[tool(annotations(
@@ -734,15 +814,7 @@ impl SsuServer {
         Parameters(req): Parameters<DownloadRequest>,
     ) -> ToolResult {
         let client = self.lms().await?;
-        let (term, _) = self.lms_term(&client, None).await?;
-        let course = client
-            .courses(term.id)
-            .await
-            .map_err(|e| e.to_string())?
-            .into_iter()
-            .find(|c| c.id == req.course_id)
-            .map(|c| c.name)
-            .unwrap_or_else(|| req.course_id.to_string());
+        let course = self.lms_course_name(&client, req.course_id).await?;
         let modules = client
             .modules(req.course_id)
             .await
