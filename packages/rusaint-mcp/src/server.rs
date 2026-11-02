@@ -16,6 +16,7 @@ use rusaint::model::SemesterType;
 use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
+use rusaint_path::{Eligibility, PathClient, ProgramQuery};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::OnceCell;
@@ -25,7 +26,7 @@ use crate::keychain;
 use crate::pending::{Action, Pending};
 use crate::usaint::{self, Usaint};
 
-const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사정·채플·장학금·학적), 학식 메뉴, LMS(강의·과제·자료·공지·게시판), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
+const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사정·채플·장학금·학적), 학식 메뉴, LMS(강의·과제·자료·공지·게시판), SSU-PATH(비교과 프로그램), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
 - 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
 - 도서관·통합(SSO) 로그인이 계정 정보 오류로 한 번 거부되면 이 서버는 재시작 전까지 다시 시도하지 않습니다(계정 잠금 방지). 재시도를 반복하지 말고, 터미널에서 Keychain 항목(rusaint-library / rusaint-sso)을 고친 뒤 앱을 재시작하라고 안내하세요.
@@ -209,6 +210,23 @@ impl SemesterRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PathProgramsRequest {
+    /// 프로그램명·키워드 검색어
+    pub keyword: Option<String>,
+    /// 페이지 (1부터, 한 페이지 10개). 생략하면 1
+    pub page: Option<u32>,
+    /// true 면 신청 대상이 아닌 것으로 보이는 프로그램(다른 학과 전용 등)도 포함
+    #[serde(default)]
+    pub include_ineligible: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PathDetailRequest {
+    /// path_programs 의 items[].id
+    pub program_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DownloadRequest {
     pub course_id: u64,
     /// lms_materials 의 material.content_id
@@ -221,6 +239,7 @@ pub struct SsuServer {
     library: Arc<OnceCell<Arc<LibraryClient>>>,
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
+    path: Arc<OnceCell<Arc<PathClient>>>,
     pending: Arc<Pending>,
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
@@ -233,6 +252,7 @@ impl SsuServer {
             library: Arc::new(OnceCell::new()),
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
+            path: Arc::new(OnceCell::new()),
             pending: Arc::new(Pending::new()),
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
@@ -271,6 +291,17 @@ impl SsuServer {
             .get_or_try_init(|| async {
                 let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
                 Ok::<_, String>(Arc::new(Usaint::new(id, password)))
+            })
+            .await
+            .cloned()
+    }
+
+    /// SSU-PATH 도 통합 계정을 씁니다. 세션은 30분이면 끝나며, 만료되면 클라이언트가 한 번 다시 로그인합니다.
+    async fn path(&self) -> Result<Arc<PathClient>, String> {
+        self.path
+            .get_or_try_init(|| async {
+                let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
+                Ok::<_, String>(Arc::new(PathClient::new(id, password)))
             })
             .await
             .cloned()
@@ -442,6 +473,58 @@ impl SsuServer {
             usaint::redact_student_info(serde_json::to_value(general).map_err(|e| e.to_string())?);
         let records = app.academic_record().await.map_err(usaint::err)?;
         to_json(&json!({ "general": general, "academic_records": records }))
+    }
+
+    /// SSU-PATH 에서 지금 모집 중이고 내 학년이 신청할 수 있는 비교과 프로그램 목록.
+    /// eligibility 는 신청 대상(학교 전체/내 학과)과 신청 신분(학생)으로 판단하며, unknown 은 단과대 단위 대상 등이라
+    /// path_program_detail 로 확인해야 합니다. seats_left 가 0 이하여도 대기자 신청이 가능할 수 있습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn path_programs(&self, Parameters(req): Parameters<PathProgramsRequest>) -> ToolResult {
+        let client = self.path().await?;
+        let me = client.profile().await.map_err(|e| e.to_string())?;
+        let query = ProgramQuery {
+            recruiting_only: true,
+            grade: me.grade,
+            keyword: req.keyword,
+            page: req.page.unwrap_or(1),
+        };
+        let page = client.programs(&query).await.map_err(|e| e.to_string())?;
+        let items: Vec<_> = page
+            .items
+            .iter()
+            .map(|p| (rusaint_path::eligibility(p, &me), p))
+            .filter(|(e, _)| req.include_ineligible || *e != Eligibility::No)
+            .map(|(e, p)| {
+                let mut v = serde_json::to_value(p).unwrap_or_default();
+                v["eligibility"] = json!(e);
+                v
+            })
+            .collect();
+        to_json(&json!({
+            "me": me,
+            "page": page.page,
+            "last_page": page.last_page,
+            "items": items,
+        }))
+    }
+
+    /// SSU-PATH 비교과 프로그램 상세: 신청 대상 상세(학적·학년·학위), 선정 방법, 정원/대기자, 주요 내용, 일정
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn path_program_detail(
+        &self,
+        Parameters(req): Parameters<PathDetailRequest>,
+    ) -> ToolResult {
+        let client = self.path().await?;
+        let pairs = client
+            .program_detail(&req.program_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(
+            &pairs
+                .into_iter()
+                .map(|(k, v)| json!({ "item": k, "value": v }))
+                .collect::<Vec<_>>(),
+        )
     }
 
     /// LMS 학기 목록과 그 학기의 수강 강의 (교수, 수강 상태).
