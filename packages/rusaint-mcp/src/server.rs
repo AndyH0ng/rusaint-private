@@ -8,11 +8,13 @@ use rusaint::application::chapel::ChapelApplication;
 use rusaint::application::course_grades::CourseGradesApplication;
 use rusaint::application::course_grades::model::CourseType;
 use rusaint::application::course_registration_status::CourseRegistrationStatusApplication;
+use rusaint::application::course_schedule::CourseScheduleApplication;
 use rusaint::application::graduation_requirements::GraduationRequirementsApplication;
 use rusaint::application::personal_course_schedule::PersonalCourseScheduleApplication;
 use rusaint::application::scholarships::ScholarshipsApplication;
 use rusaint::application::student_information::StudentInformationApplication;
 use rusaint::model::SemesterType;
+use rusaint_calendar::CalendarClient;
 use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
@@ -23,6 +25,7 @@ use serde_json::json;
 use tokio::sync::OnceCell;
 
 use crate::automation::{Automation, MAX_RENEW_HOURS};
+use crate::courses::{self, Kind};
 use crate::keychain;
 use crate::pending::{Action, Pending};
 use crate::usaint::{self, Usaint};
@@ -220,6 +223,56 @@ impl SemesterRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CalendarRequest {
+    /// 시작 날짜 (YYYY-MM-DD). 생략하면 오늘
+    pub from: Option<String>,
+    /// 끝 날짜 (YYYY-MM-DD). 생략하면 시작일부터 60일 뒤
+    pub to: Option<String>,
+    /// 일정 이름에 들어 있어야 할 단어 (예: 수강신청, 중간고사, 휴학)
+    pub keyword: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CourseSearchRequest {
+    /// 연도. 생략하면 현재 학기
+    pub year: Option<u32>,
+    /// 1학기, 2학기, 여름학기, 겨울학기. 생략하면 현재 학기
+    pub semester: Option<String>,
+    /// lecture(과목명 검색), professor(교수명 검색), major(전공), required_elective(교양필수),
+    /// optional_elective(교양선택), chapel(채플), connected_major(연계전공), united_major(융합전공), education(교직)
+    pub kind: String,
+    /// lecture/professor 는 검색어, required_elective·chapel 은 과목명, optional_elective 는 교양 분야,
+    /// connected_major·united_major 는 전공명. 이름은 usaint_course_options 의 값과 정확히 같아야 합니다
+    pub keyword: Option<String>,
+    /// major 일 때 단과대·학부·전공. 생략하면 내 소속
+    pub collage: Option<String>,
+    pub department: Option<String>,
+    pub major: Option<String>,
+    /// 결과에서 다시 거를 단어들(공백 구분, 모두 포함). 과목명·교수·강의시간·이수구분·과목번호에서 찾습니다. 예: "월 전선"
+    pub filter: Option<String>,
+    /// 최대 개수 (기본 40)
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CourseOptionsRequest {
+    pub year: Option<u32>,
+    pub semester: Option<String>,
+    /// 주면 그 단과대의 학부 목록도 돌려줍니다
+    pub collage: Option<String>,
+    /// collage 와 함께 주면 그 학부의 전공 목록도 돌려줍니다
+    pub department: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GraduationPlanRequest {
+    /// 추천할 학기 연도. 생략하면 다음 정규 학기
+    pub year: Option<u32>,
+    /// 1학기 또는 2학기. 생략하면 다음 정규 학기
+    pub semester: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct PathProgramsRequest {
     /// 프로그램명·키워드 검색어
     pub keyword: Option<String>,
@@ -263,6 +316,7 @@ pub struct DownloadRequest {
 #[derive(Clone)]
 pub struct SsuServer {
     meal: Arc<MealClient>,
+    calendar: Arc<CalendarClient>,
     library: Arc<OnceCell<Arc<LibraryClient>>>,
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
@@ -279,6 +333,7 @@ impl SsuServer {
     pub fn new() -> Result<Self, String> {
         Ok(Self {
             meal: Arc::new(MealClient::new().map_err(|e| e.to_string())?),
+            calendar: Arc::new(CalendarClient::new().map_err(|e| e.to_string())?),
             library: Arc::new(OnceCell::new()),
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
@@ -559,6 +614,264 @@ impl SsuServer {
         let u = self.usaint().await?;
         let mut app = u.app::<ScholarshipsApplication>().await?;
         to_json(&app.scholarships().await.map_err(usaint::err)?)
+    }
+
+    /// 내 소속(단과대·학부·전공)으로 전공 검색 조건을 만듭니다.
+    async fn my_major(&self, u: &Usaint) -> Result<Kind, String> {
+        let info = u.app::<StudentInformationApplication>().await?;
+        let general = info.general().map_err(usaint::err)?;
+        Ok(Kind::Major {
+            collage: general.collage().to_string(),
+            department: general.department().to_string(),
+            major: general.major().map(str::to_string),
+        })
+    }
+
+    /// u-saint 강의시간표 검색. 과목명·교수명 검색, 전공(생략하면 내 소속), 교양필수·교양선택·채플 등으로 찾습니다.
+    /// 교양필수 과목명·교양선택 분야·단과대/학부 이름은 usaint_course_options 로 먼저 확인하세요.
+    /// 다음 학기 시간표는 보통 수강신청 몇 주 전에 올라옵니다. 결과가 비면 아직 공개 전일 수 있습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_course_search(
+        &self,
+        Parameters(req): Parameters<CourseSearchRequest>,
+    ) -> ToolResult {
+        let (year, semester) = SemesterRequest {
+            year: req.year,
+            semester: req.semester.clone(),
+        }
+        .resolve()?;
+        let u = self.usaint().await?;
+        let keyword = || {
+            req.keyword
+                .clone()
+                .filter(|k| !k.trim().is_empty())
+                .ok_or_else(|| format!("kind={} 은 keyword 가 필요합니다", req.kind))
+        };
+        let kind = match req.kind.as_str() {
+            "lecture" => Kind::Lecture(keyword()?),
+            "professor" => Kind::Professor(keyword()?),
+            "required_elective" => Kind::RequiredElective(keyword()?),
+            "optional_elective" => Kind::OptionalElective(keyword()?),
+            "chapel" => Kind::Chapel(keyword()?),
+            "connected_major" => Kind::ConnectedMajor(keyword()?),
+            "united_major" => Kind::UnitedMajor(keyword()?),
+            "education" => Kind::Education,
+            "major" => match (&req.collage, &req.department) {
+                (Some(collage), Some(department)) => Kind::Major {
+                    collage: collage.clone(),
+                    department: department.clone(),
+                    major: req.major.clone(),
+                },
+                _ => self.my_major(&u).await?,
+            },
+            other => return Err(format!("알 수 없는 kind: {other}")),
+        };
+        let mut app = u.app::<CourseScheduleApplication>().await?;
+        let mut found = courses::search(&mut app, year, semester, &kind).await?;
+        if let Some(words) = req.filter.as_deref() {
+            found = courses::filter(found, words);
+        }
+        let total = found.len();
+        found.truncate(req.limit.unwrap_or(40).clamp(1, 200));
+        to_json(&json!({
+            "year": year,
+            "semester": semester,
+            "total": total,
+            "returned": found.len(),
+            "courses": found,
+        }))
+    }
+
+    /// 강의 검색에 쓸 이름 목록: 단과대, (collage 를 주면) 학부, (department 도 주면) 전공, 교양필수 과목명, 교양선택 분야
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_course_options(
+        &self,
+        Parameters(req): Parameters<CourseOptionsRequest>,
+    ) -> ToolResult {
+        let (year, semester) = SemesterRequest {
+            year: req.year,
+            semester: req.semester.clone(),
+        }
+        .resolve()?;
+        let u = self.usaint().await?;
+        let mut app = u.app::<CourseScheduleApplication>().await?;
+        let e = usaint::err;
+        let collages = app.collages(year, semester).await.map_err(e)?;
+        let departments = match &req.collage {
+            Some(c) => Some(app.departments(year, semester, c).await.map_err(e)?),
+            None => None,
+        };
+        let majors = match (&req.collage, &req.department) {
+            (Some(c), Some(d)) => Some(app.majors(year, semester, c, d).await.map_err(e)?),
+            _ => None,
+        };
+        let required_electives = app.required_electives(year, semester).await.map_err(e)?;
+        let optional_elective_areas = app
+            .optional_elective_categories(year, semester)
+            .await
+            .map_err(e)?;
+        to_json(&json!({
+            "year": year,
+            "semester": semester,
+            "collages": collages,
+            "departments": departments,
+            "majors": majors,
+            "required_electives": required_electives,
+            "optional_elective_areas": optional_elective_areas,
+        }))
+    }
+
+    /// 졸업사정표에서 아직 못 채운 요건과, 그 요건을 채울 수 있는 강의 후보.
+    /// 이미 들은 과목(졸업사정표에 쓰인 과목)은 빼고, 전공은 내 소속 학부 강의에서 이수구분(전기/전필/전선)으로 고릅니다.
+    /// 추천 학기 시간표가 아직 없으면 1년 전 같은 학기 시간표로 대신하며 offered_basis 에 표시합니다. 이때는 실제 개설 여부가 다를 수 있다고 알려 주세요.
+    /// 기독교 과목 후보는 과목명으로 추정한 것이고, 졸업논문·졸업확정신고 같은 요건은 학과 안내를 따르도록 안내하세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn usaint_graduation_plan(
+        &self,
+        Parameters(req): Parameters<GraduationPlanRequest>,
+    ) -> ToolResult {
+        let (cy, cs) = usaint::current_semester();
+        let (ny, ns) = courses::next_regular(cy, cs);
+        let year = req.year.unwrap_or(ny);
+        let semester = match req.semester.as_deref() {
+            Some(s) => usaint::parse_semester(s)?,
+            None => ns,
+        };
+        let u = self.usaint().await?;
+        let mut grad = u.app::<GraduationRequirementsApplication>().await?;
+        let requirements = grad.requirements().await.map_err(usaint::err)?;
+        let unmet: Vec<_> = requirements
+            .requirements()
+            .values()
+            .filter(|r| !r.result())
+            .collect();
+        let need = |category: &str| unmet.iter().any(|r| r.category() == category);
+        let taken = courses::taken(&requirements);
+
+        let kind = self.my_major(&u).await?;
+        let mut app = u.app::<CourseScheduleApplication>().await?;
+        let mut basis = (year, semester);
+        let mut majors = courses::search(&mut app, year, semester, &kind)
+            .await
+            .unwrap_or_default();
+        if majors.is_empty() {
+            basis = (year - 1, semester);
+            majors = courses::search(&mut app, basis.0, basis.1, &kind).await?;
+        }
+        // 시간이 정해진 정규 강의를 앞에, 현장실습·Co-op 처럼 시간이 없는 과목을 뒤에 둡니다.
+        majors.sort_by_key(|c| c.schedule.trim().is_empty());
+        let pick = |category: &str| -> Vec<_> {
+            let mut seen = std::collections::BTreeSet::new();
+            majors
+                .iter()
+                .filter(|c| courses::matches_major_kind(category, &c.category))
+                .filter(|c| !courses::is_taken(&taken, &c.name))
+                .filter(|c| seen.insert(c.name.clone()))
+                .map(|c| {
+                    let sections: Vec<_> = majors
+                        .iter()
+                        .filter(|o| o.name == c.name)
+                        .map(|o| json!({"code": o.code, "division": o.division, "professor": o.professor, "schedule": o.schedule, "seats_left": o.seats_left}))
+                        .collect();
+                    json!({"name": c.name, "category": c.category, "hours_credits": c.hours_credits, "target": c.target, "sections": sections})
+                })
+                .collect()
+        };
+        let major_basic = need("전공기초").then(|| pick("전공기초"));
+        let major = need("전공").then(|| pick("전공"));
+
+        let required_names = if need("교양필수") || need("졸업필수 요건") {
+            app.required_electives(basis.0, basis.1)
+                .await
+                .map_err(usaint::err)?
+        } else {
+            Vec::new()
+        };
+        // 교양필수는 영역마다 하나씩 들으므로, 이미 들은 과목이 있는 영역은 done 으로 표시합니다.
+        let mut areas: std::collections::BTreeMap<&str, (bool, Vec<&str>)> = Default::default();
+        for name in required_names
+            .iter()
+            .filter(|n| !courses::is_for_international(n))
+        {
+            let (area, _) = courses::split_area(name);
+            let entry = areas.entry(area.unwrap_or("기타")).or_default();
+            if courses::is_taken(&taken, name) {
+                entry.0 = true;
+            } else {
+                entry.1.push(name);
+            }
+        }
+        let required_areas: Vec<_> = areas
+            .iter()
+            .map(|(area, (done, left))| json!({"area": area, "done": done, "not_taken": left}))
+            .collect();
+        let christian: Vec<_> = areas
+            .values()
+            .flat_map(|(_, left)| left)
+            .filter(|n| ["기독", "성서", "성경"].iter().any(|k| n.contains(k)))
+            .collect();
+        let optional_areas = if need("교양선택") {
+            Some(
+                app.optional_elective_categories(basis.0, basis.1)
+                    .await
+                    .map_err(usaint::err)?,
+            )
+        } else {
+            None
+        };
+
+        let mut unmet_json: Vec<_> = unmet
+            .iter()
+            .map(|r| {
+                json!({
+                    "name": r.name().trim(),
+                    "category": r.category(),
+                    "required": r.requirement(),
+                    "earned": r.calculation(),
+                    "short_by": r.difference().map(|d| -d),
+                })
+            })
+            .collect();
+        unmet_json.sort_by(|a, b| a["category"].as_str().cmp(&b["category"].as_str()));
+        to_json(&json!({
+            "target_semester": {"year": year, "semester": semester},
+            "offered_basis": {
+                "year": basis.0,
+                "semester": basis.1,
+                "is_previous_year": basis != (year, semester),
+            },
+            "is_graduatable": requirements.is_graduatable(),
+            "unmet": unmet_json,
+            "candidates": {
+                "major_basic": major_basic,
+                "major": major,
+                "required_elective_areas": need("교양필수").then_some(&required_areas),
+                "christian_course_guess": (!christian.is_empty()).then_some(&christian),
+                "optional_elective_areas": optional_areas,
+            },
+        }))
+    }
+
+    /// 숭실대학교 학사일정(수강신청, 개강, 시험, 휴학·복학 신청, 성적 공개 등). 로그인 없이 학교 홈페이지에서 가져옵니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn academic_calendar(&self, Parameters(req): Parameters<CalendarRequest>) -> ToolResult {
+        let from = parse_date(req.from.as_deref())?;
+        let to = match req.to.as_deref() {
+            Some(t) if !t.is_empty() => parse_date(Some(t))?,
+            _ => from + chrono::Duration::days(60),
+        };
+        if to < from || (to - from).num_days() > 731 {
+            return Err("기간은 시작일 이후, 2년 이내여야 합니다".into());
+        }
+        let mut events = self
+            .calendar
+            .between(from, to)
+            .await
+            .map_err(|e| e.to_string())?;
+        if let Some(k) = req.keyword.as_deref().filter(|k| !k.trim().is_empty()) {
+            events.retain(|e| e.title.contains(k.trim()));
+        }
+        to_json(&json!({ "from": from, "to": to, "events": events }))
     }
 
     /// u-saint 학적 기본 정보(학과·전공·학년·학기)와 학적 변동 이력.
