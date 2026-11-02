@@ -4,6 +4,7 @@ members = [
   "packages/rusaint-cli",
   "packages/rusaint-ffi",
   "packages/rusaint-library",
+  "packages/rusaint-lms",
   "packages/rusaint-mcp",
   "packages/rusaint-meal",
   "uniffi-bindgen",
