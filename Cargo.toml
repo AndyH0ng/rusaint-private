@@ -7,6 +7,7 @@ members = [
   "packages/rusaint-lms",
   "packages/rusaint-mcp",
   "packages/rusaint-meal",
+  "packages/rusaint-path",
   "uniffi-bindgen",
 ]
 resolver = "3"
