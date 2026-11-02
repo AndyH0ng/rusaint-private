@@ -61,6 +61,15 @@ pub struct MealsRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct HoursRequest {
+    /// 코너별 배식 시간을 볼 날짜 (YYYY-MM-DD, 이번 주만 나옴). 생략하면 오늘
+    pub date: Option<String>,
+    /// true 면 편의점·카페·서점 운영 시간도 포함
+    #[serde(default)]
+    pub include_other_stores: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DateRequest {
     /// 날짜 (YYYY-MM-DD). 생략하면 오늘
     pub date: Option<String>,
@@ -349,7 +358,7 @@ impl SsuServer {
 impl SsuServer {
     /// 교내 식당(soongguri.com) 하루 메뉴. 알레르기·원산지 정보는 제외됩니다.
     /// lines 는 화면 그대로의 텍스트입니다: 가격 "- 5.0" 은 5,000원, "★ 메뉴" 줄과 "메뉴, 메뉴- 6.0" 줄은 같은 메뉴입니다.
-    /// slot(중식1 등)은 내용과 다를 수 있으니 section 과 본문으로 판단하세요. status=closed 는 미래 날짜면 미등록일 수 있습니다.
+    /// slot(중식1 등)은 내용과 다를 수 있으니 section 과 본문으로 판단하세요(예: 석식1 칸의 [천원의아침밥]은 실제로 아침). 정확한 코너 이름과 배식 시간은 get_cafeteria_hours 의 corners 에 있습니다. status=closed 는 미래 날짜면 미등록일 수 있습니다.
     /// 메뉴 이름은 영문 설명을 참고해 바꾸지 말고 원문 그대로 쓰세요. 식당을 지정하지 않으면 6곳을 차례로 조회해 몇 초 걸립니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn get_meals(&self, Parameters(req): Parameters<MealsRequest>) -> ToolResult {
@@ -368,6 +377,30 @@ impl SsuServer {
             );
         }
         to_json(&menus)
+    }
+
+    /// 학식·기숙사 식당 운영 시간과 위치·연락처, 코너별 배식 시간.
+    /// stores 는 매장시간 페이지, corners 는 그날 식단 페이지 기준이라 값이 다를 수 있으니(예: 학생식당 아침 08:00~09:00 / 08:10~09:20)
+    /// 특정 날짜에는 corners 를 우선하세요. corners 는 이번 주(월~토)만 나오고, 모바일 식단의 slot 과 달리 코너 이름이 정확합니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn get_cafeteria_hours(&self, Parameters(req): Parameters<HoursRequest>) -> ToolResult {
+        let date = parse_date(req.date.as_deref())?;
+        let mut stores = self.meal.store_hours().await.map_err(|e| e.to_string())?;
+        if !req.include_other_stores {
+            stores.retain(|s| s.category == "식당");
+        }
+        let corners = self
+            .meal
+            .corner_hours(date)
+            .await
+            .map_err(|e| e.to_string())?;
+        let dorm = self.meal.dorm_hours().await.map_err(|e| e.to_string())?;
+        to_json(&json!({
+            "date": date,
+            "stores": stores,
+            "corners": corners.into_iter().filter(|c| !c.corners.is_empty()).collect::<Vec<_>>(),
+            "dorm": dorm,
+        }))
     }
 
     /// 기숙사 식당 주간 식단 (date 가 속한 월~일). 아직 올라오지 않은 주는 빈 목록이고, 끼니에 "미운영"이 들어갈 수 있습니다.

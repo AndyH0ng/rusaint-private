@@ -14,7 +14,7 @@ chrono = { version = "0.4", default-features = false, features = ["std", "clock"
 ego-tree = "0.11"
 encoding_rs = "0.8"
 regex-lite = "0.1.6"
-reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "gzip", "query"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "gzip", "query", "form"] }
 scraper = "0.26"
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }

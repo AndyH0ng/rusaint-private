@@ -1,0 +1,590 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Expires" content="-1"> 
+<meta http-equiv="Pragma" content="no-cache"> 
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta name='robots' content='noindex' /> 
+<meta name="viewport"
+			content="width=device-width, initial-scale=0.4,
+					maximum-scale=1.0, minimum-scale=0.3,
+					user-scalable=yes" />
+<title>숭실대학교 생활협동조합</title>
+
+<link rel="Stylesheet" herf="/lib/soongsil.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/earlyaccess/nanumgothic.css" type="text/css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/font-nanum/1.0/nanumbarungothic/nanumbarungothic.css">
+<link rel="Stylesheet" href="/lib/soongsil.css" type="text/css">
+<script type="text/javascript" src="/nbs/lib/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/nbs/lib/ajax.js"></script>
+<script type="text/javascript" src="/nbs/lib/dnd.js"></script>
+<script type="text/javascript" src="/nbs/lib/event.js"></script>
+<script type="text/javascript" src="/nbs/lib/nbs_js.js"></script>
+<script type="text/javascript" src="/nbs/lib/editor.js"></script>
+
+<!--메인바로가기버튼-->
+<script language="JavaScript" type="text/JavaScript">
+<!--
+function MM_swapImgRestore() { //v3.0
+  var i,x,a=document.MM_sr; for(i=0;a&&i<a.length&&(x=a[i])&&x.oSrc;i++) x.src=x.oSrc;
+}
+
+function MM_preloadImages() { //v3.0
+  var d=document; if(d.images){ if(!d.MM_p) d.MM_p=new Array();
+    var i,j=d.MM_p.length,a=MM_preloadImages.arguments; for(i=0; i<a.length; i++)
+    if (a[i].indexOf("#")!=0){ d.MM_p[j]=new Image; d.MM_p[j++].src=a[i];}}
+}
+
+function MM_findObj(n, d) { //v4.01
+  var p,i,x;  if(!d) d=document; if((p=n.indexOf("?"))>0&&parent.frames.length) {
+    d=parent.frames[n.substring(p+1)].document; n=n.substring(0,p);}
+  if(!(x=d[n])&&d.all) x=d.all[n]; for (i=0;!x&&i<d.forms.length;i++) x=d.forms[i][n];
+  for(i=0;!x&&d.layers&&i<d.layers.length;i++) x=MM_findObj(n,d.layers[i].document);
+  if(!x && d.getElementById) x=d.getElementById(n); return x;
+}
+
+function MM_swapImage() { //v3.0
+  var i,j=0,x,a=MM_swapImage.arguments; document.MM_sr=new Array; for(i=0;i<(a.length-2);i+=3)
+   if ((x=MM_findObj(a[i]))!=null){document.MM_sr[j++]=x; if(!x.oSrc) x.oSrc=x.src; x.src=a[i+2];}
+}
+//-->
+</script>
+<!--//메인바로가기버튼-->
+<style>
+.board-list{text-align:center; color:#000000;padding:5px 0 5px 0;border-bottom:1px dotted #2d90b4;font-size:9.2pt;}
+.board-list-tit{text-align:left; color:#000000;padding:5px 0 5px 0;border-bottom:1px dotted #2d90b4; font-size:9.2pt;cursor:pointer;}
+.board-list-tit-over{text-align:left; color:#D56204;padding:5px 0 5px 0;border-bottom:1px dotted #2d90b4; font-size:9.2pt;cursor:pointer;}
+.board-txt{text-align:center; color:#000000;font-size:9.6pt; line-height:140%;}
+</style>
+
+</head>
+
+<!--<body  oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onmousedown="if(event.button==2){mouseClose();};">-->
+<body>
+<input type="hidden" id="getPageType" value="clientPage">
+<!--tm-->
+	 <div class="tmbg">
+    <div class="tm"><input type="hidden" id="subread" value=""><input type="hidden" id="dsize" value="0"><input type="hidden" id="tv" value=""><input type="hidden" id="menuStatus" value="0"><a href="/">홈</a> &nbsp;&nbsp;<a href="/main.php?mkey=3&w=5">로그인</a> &nbsp;&nbsp; <a href="/menu/" target="_blank">급식관리</a> &nbsp;&nbsp; <a href="/main.php?mkey=6">사이트맵</a></div>
+	</div>
+<!--tm-->
+<!--메인메뉴_임시 -->
+	<div class="mn_layout" onmouseover="">
+	<div class="mn_logo"><a href="/index.php"><img src="/images/logo2.gif" border="0"></a></div>
+	<div class="mn_left"></div>
+	<div style="float:left;height:102px;" id="ssuMenu">
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=1&w=1';">생협안내</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=2&w=1';">매장안내</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=3&w=1';">조합원광장</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=4&w=4';">커뮤니티</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=5&w=1';">예약</div>
+		</div>
+	</div>
+	<!--<div style="background:#ffffff;display:block;position:absolute;top:0;z-index:1;
+width:100%;height:132px;"></div>서브메뉴가리개//-->
+	<!--메인메뉴 높이  132 서브메뉴 세로 190 border-top 10 , border-bottom 1 시작위치(132-190-10-1) -69 서브로딩=top:132//-->
+	<div id="subBack" class="sm_bg">
+		<!--서브메뉴//-->
+		<div id="subMenu" class="sm_wrap">
+			<div style="float:left;width:400px;height:190px;"></div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=1&w=1';" id="sm_but1_1" class="sm_ft" onmouseover="changeButStyle('sm_but1_1','sm_ft_over');" onmouseout="changeButStyle('sm_but1_1','sm_ft');">이사장 인사말</div>
+								<div onclick="location.href='main.php?mkey=1&w=2';" id="sm_but1_2" class="sm_ft" onmouseover="changeButStyle('sm_but1_2','sm_ft_over');" onmouseout="changeButStyle('sm_but1_2','sm_ft');">생협소개</div>
+								<div onclick="location.href='main.php?mkey=1&w=3';" id="sm_but1_3" class="sm_ft" onmouseover="changeButStyle('sm_but1_3','sm_ft_over');" onmouseout="changeButStyle('sm_but1_3','sm_ft');">연혁</div>
+								<div onclick="location.href='main.php?mkey=1&w=4';" id="sm_but1_4" class="sm_ft" onmouseover="changeButStyle('sm_but1_4','sm_ft_over');" onmouseout="changeButStyle('sm_but1_4','sm_ft');">정관</div>
+								<div onclick="location.href='main.php?mkey=1&w=5';" id="sm_but1_5" class="sm_ft" onmouseover="changeButStyle('sm_but1_5','sm_ft_over');" onmouseout="changeButStyle('sm_but1_5','sm_ft');">운영조직</div>
+								<div onclick="location.href='main.php?mkey=1&w=6';" id="sm_but1_6" class="sm_ft" onmouseover="changeButStyle('sm_but1_6','sm_ft_over');" onmouseout="changeButStyle('sm_but1_6','sm_ft');">생협현황</div>
+								<div onclick="location.href='main.php?mkey=1&w=7';" id="sm_but1_7" class="sm_ft" onmouseover="changeButStyle('sm_but1_7','sm_ft_over');" onmouseout="changeButStyle('sm_but1_7','sm_ft');">생협 찾아오는 길</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=2&w=1';" id="sm_but2_1" class="sm_ft" onmouseover="changeButStyle('sm_but2_1','sm_ft_over');" onmouseout="changeButStyle('sm_but2_1','sm_ft');">직영매장</div>
+								<div onclick="location.href='main.php?mkey=2&w=2';" id="sm_but2_2" class="sm_ft" onmouseover="changeButStyle('sm_but2_2','sm_ft_over');" onmouseout="changeButStyle('sm_but2_2','sm_ft');">임대매장</div>
+								<div onclick="location.href='main.php?mkey=2&w=3';" id="sm_but2_3" class="sm_ft" onmouseover="changeButStyle('sm_but2_3','sm_ft_over');" onmouseout="changeButStyle('sm_but2_3','sm_ft');">식단</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=3&w=1';" id="sm_but3_1" class="sm_ft" onmouseover="changeButStyle('sm_but3_1','sm_ft_over');" onmouseout="changeButStyle('sm_but3_1','sm_ft');">가입안내</div>
+								<div onclick="location.href='main.php?mkey=3&w=2';" id="sm_but3_2" class="sm_ft" onmouseover="changeButStyle('sm_but3_2','sm_ft_over');" onmouseout="changeButStyle('sm_but3_2','sm_ft');">복지혜택</div>
+								<div onclick="location.href='main.php?mkey=3&w=3';" id="sm_but3_3" class="sm_ft" onmouseover="changeButStyle('sm_but3_3','sm_ft_over');" onmouseout="changeButStyle('sm_but3_3','sm_ft');">FAQ</div>
+								<div onclick="location.href='main.php?mkey=3&w=5';" id="sm_but3_5" class="sm_ft" onmouseover="changeButStyle('sm_but3_5','sm_ft_over');" onmouseout="changeButStyle('sm_but3_5','sm_ft');">로그인</div>
+								<div onclick="location.href='main.php?mkey=3&w=6';" id="sm_but3_6" class="sm_ft" onmouseover="changeButStyle('sm_but3_6','sm_ft_over');" onmouseout="changeButStyle('sm_but3_6','sm_ft');">회원가입</div>
+								<div onclick="location.href='main.php?mkey=3&w=7';" id="sm_but3_7" class="sm_ft" onmouseover="changeButStyle('sm_but3_7','sm_ft_over');" onmouseout="changeButStyle('sm_but3_7','sm_ft');">아이디/비밀번호 찾기</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=4&w=4';" id="sm_but4_4" class="sm_ft" onmouseover="changeButStyle('sm_but4_4','sm_ft_over');" onmouseout="changeButStyle('sm_but4_4','sm_ft');">공지사항</div>
+								<div onclick="location.href='main.php?mkey=4&w=3';" id="sm_but4_3" class="sm_ft" onmouseover="changeButStyle('sm_but4_3','sm_ft_over');" onmouseout="changeButStyle('sm_but4_3','sm_ft');">자유게시판</div>
+								<div onclick="location.href='main.php?mkey=4&w=2';" id="sm_but4_2" class="sm_ft" onmouseover="changeButStyle('sm_but4_2','sm_ft_over');" onmouseout="changeButStyle('sm_but4_2','sm_ft');">질문과답변</div>
+								<div onclick="location.href='main.php?mkey=4&w=1';" id="sm_but4_1" class="sm_ft" onmouseover="changeButStyle('sm_but4_1','sm_ft_over');" onmouseout="changeButStyle('sm_but4_1','sm_ft');">모니터링</div>
+								<div onclick="location.href='main.php?mkey=4&w=5';" id="sm_but4_5" class="sm_ft" onmouseover="changeButStyle('sm_but4_5','sm_ft_over');" onmouseout="changeButStyle('sm_but4_5','sm_ft');">자료실</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=5&w=1';" id="sm_but5_1" class="sm_ft" onmouseover="changeButStyle('sm_but5_1','sm_ft_over');" onmouseout="changeButStyle('sm_but5_1','sm_ft');">식당</div>
+								<div onclick="location.href='main.php?mkey=5&w=2';" id="sm_but5_2" class="sm_ft" onmouseover="changeButStyle('sm_but5_2','sm_ft_over');" onmouseout="changeButStyle('sm_but5_2','sm_ft');">콘도</div>
+								<div onclick="location.href='main.php?mkey=5&w=4';" id="sm_but5_4" class="sm_ft" onmouseover="changeButStyle('sm_but5_4','sm_ft_over');" onmouseout="changeButStyle('sm_but5_4','sm_ft');">차량 및 천막</div>
+								<div onclick="location.href='main.php?mkey=5&w=5';" id="sm_but5_5" class="sm_ft" onmouseover="changeButStyle('sm_but5_5','sm_ft_over');" onmouseout="changeButStyle('sm_but5_5','sm_ft');">내 예약 정보</div>
+							</div>
+					</div>
+		<!--서브 끝//-->	
+	</div>
+		
+	<!--메인메뉴_임시 끝-->
+
+
+<div class="sub_layout">
+	<div class="sub_mid">
+		<div class="loca"><img src="/images/ico_hom.png" align="absmiddle">현재위치 > 매장안내 > 직영매장<span class="loca_s"></span> &nbsp; &nbsp; &nbsp; &nbsp; </div>
+		<div class="lemn">
+<!--카테고리명--><div class="le_tit">
+<!--카테고리아이콘--><img src="/images/ico_lemn1.png" align="absmiddle"> 매장안내</div>
+	<div class="le_wrap">
+		<div class="le_mn" style="cursor:pointer;" onclick="location.href='main.php?mkey=2&w=1';"> &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp;직영매장</div>
+			<div class="le_mn" style="cursor:pointer;" onclick="location.href='main.php?mkey=2&w=2';"> &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp;임대매장</div>
+			<div class="le_mn" style="cursor:pointer;" onclick="location.href='main.php?mkey=2&w=3';"> &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp;식단</div>
+			<div class="le_sm" onclick="location.href='main.php?mkey=2&w=3&l=1';"><img src="/images/ico2.gif" align="absmiddle">오늘의 식단</div>
+			<div class="le_sm" onclick="location.href='main.php?mkey=2&w=3&l=2';"><img src="/images/ico2.gif" align="absmiddle">주간 식단</div>
+		
+	<br><img src="/images/b.gif" width="1" height="20">
+	<br><img src="/images/le_phone2.png">
+	</div><!--le_wrap-->
+	<div class="le_s"></div>
+</div>		<div class="smid">
+			<div class="ct"><img src="/images/ico_ct.png" align="absmiddle">직영매장</div>
+			 			<div class="detail_center">
+			<table width="750" border="0" align="center" cellpadding="0" cellspacing="0">
+  <tr>
+    <td height="45" class="ft1" style="padding:0 0 10px 0;">* 각 매장의 기본정보입니다. <strong>[상세보기]</strong>를 클릭하시면 해당매장의 상세정보를 확인하실 수 있습니다.</td>
+  </tr>
+</table>
+<table width="750" border="0" cellpadding="0" cellspacing="0" bgcolor="#FFFFFF" align="center">
+ <tr>
+ <td class="sh_bar">구분</td>
+ <td class="sh_bar">매장명</td>
+ <td class="sh_bar">매장위치</td>
+ <td class="sh_bar">연락처</td>
+ <td class="sh_bar">운영시간</td>
+ <td class="sh_bar">매장정보</td>
+ </tr> 
+			<tr>
+		<td class="sh_name"  style="width:80px;text-align:center;vertical-align:top;background:#ffffff;" rowspan="4">식당</td>
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop1" style="position:absolute;"></div>학생식당</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">학생회관 3층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+		<div>내선 : 0882</div><div>전화 : 820-0882</div>		</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">08:00~09:00 (천원의아침밥) <br />
+11:20~14:00 (식사 제공)<br />
+16:00~23:00 (도서관 휴관에 따른 대체 열람실 운영)</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">휴무(숭실도담 이용 바람)</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('5','1','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop2" style="position:absolute;"></div>숭실도담식당</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">신양관 2층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<div>전화 : 820-0890</div>		</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">11:20 ~ 14:00(점심)<br />
+17:00 ~ 18:30 (저녁)<br />
+19:30~23:00 도서관 휴관에 따른 대체 열람실 운영</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">11:20 ~ 13:30(점심)</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('6','2','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop3" style="position:absolute;"></div>스넥코너</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">학생회관 3층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+		<div>전화 : 820-0892</div>		</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">11:00 ~ 16:00(라스트오더 15:30)<br />
+브레이크 타임 14:30~15:00</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">휴무</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('7','3','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop4" style="position:absolute;"></div>Faculty Lounge</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">전산관 B1</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">11:30~14:00 (식사 제공)<br />
+14:00~17:00 (공간 개방)</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">휴무</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('33','4','');"></td>
+	</tr>
+				<tr>
+			<td style="height:0;border-bottom:2px solid #E7E7E7;background:#E7E7E7;" colspan="6"></td>
+		</tr>
+				<tr>
+		<td class="sh_name"  style="width:80px;text-align:center;vertical-align:top;background:#ffffff;" rowspan="6">편의점</td>
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop1" style="position:absolute;"></div>학생회관 쿱스켓 편의점</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">학생회관 4층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 08:00 ~ 19:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">(토요일)유인 운영 : 09:00 ~ 14:30<br />
+무인 운영 : 24시간</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('12','1','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop2" style="position:absolute;"></div>신양관 쿱스켓 편의점</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">신양관 1층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 08:00 ~ 19:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">(토요일)유인 운영 : 09:00 ~ 14:30<br />
+무인 운영 : 24시간</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('15','2','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop3" style="position:absolute;"></div>조만식 기념관 쿱스켓 편의점</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">조만식 기념관 2층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 08:30 ~ 16:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">(토요일)유인 운영 : 09:00 ~ 14:30<br />
+무인 운영 : 24시간</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('14','3','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop4" style="position:absolute;"></div>형남공학관 쿱스켓 편의점</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">형남공학관 2층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 08:30 ~ 16:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">(토요일)유인 운영 : 09:00 ~ 12:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('13','4','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop5" style="position:absolute;"></div>숭덕경상관 쿱스켓</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">숭덕경상관 1층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 08:30 ~ 16:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">(토요일)유인 운영 : 09:00 ~ 14:30<br />
+무인 운영 : 24시간</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('17','5','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop6" style="position:absolute;"></div>전산관 쿱스켓</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">전산관 1층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 08:30 ~ 16:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">유인 운영 : 09:00 ~ 12:00<br />
+무인 운영 : 24시간</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('16','6','');"></td>
+	</tr>
+				<tr>
+			<td style="height:0;border-bottom:2px solid #E7E7E7;background:#E7E7E7;" colspan="6"></td>
+		</tr>
+				<tr>
+		<td class="sh_name"  style="width:80px;text-align:center;vertical-align:top;background:#ffffff;" rowspan="5">커피점</td>
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop1" style="position:absolute;"></div>조만식기념관 카페</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">조만식기념관 1층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">08:00 ~ 18:00</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">08:00 ~ 14:00</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('34','1','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop2" style="position:absolute;"></div>숭덕경상관 카페</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">숭덕경상관 2층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">08:30 ~ 18:00</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">08:30 ~ 14:00</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('32','2','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop3" style="position:absolute;"></div>도서관(숭실마루)</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">도서관 6층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">도서관 휴관에 따른 휴무</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">휴무</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('30','3','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop4" style="position:absolute;"></div>CAFE ING</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">웨스트민스트홀 3층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">08:30 ~ 20:00</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">(토요일)08:30 ~ 18:00</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('10','4','');"></td>
+	</tr>
+				<tr>
+
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#ffffff;"><div id="show_shop5" style="position:absolute;"></div>안익태기념관(요거바라)</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#ffffff;">안익태기념관 1층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#ffffff;">
+				</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#ffffff;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">10:00~18:00</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">휴무</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#ffffff;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('11','5','');"></td>
+	</tr>
+				<tr>
+			<td style="height:0;border-bottom:2px solid #E7E7E7;background:#E7E7E7;" colspan="6"></td>
+		</tr>
+				<tr>
+		<td class="sh_name"  style="width:80px;text-align:center;vertical-align:top;background:#f4f4f4;" >서점/문구</td>
+	    <td class="sh_name" style="width:130px;text-align:center;vertical-align:top;background:#f4f4f4;"><div id="show_shop1" style="position:absolute;"></div>서점&문구</td>
+		<td class="sh_ft1" style="width:150px;text-align:center;vertical-align:top;background:#f4f4f4;">학생회관 4층</td>
+		<td class="sh_ft2"  style="width:150px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<div>전화 : 820-0886</div>		</td>
+		<td class="sh_ft2" style="width:250px;text-align:left;vertical-align:top;background:#f4f4f4;">
+		<table border="0" cellpadding="0" cellspacing="0">
+					<tr>
+				<td style="width:40px;text-align:left;" valign="top">평일 :</td>
+				<td style="text-align:left;" valign="top">09:00 ~ 18:00</td>
+			</tr>
+			<tr>
+				<td style="width:40px;text-align:left;" valign="top">주말 :</td>
+				<td style="text-align:left;" valign="top">휴무</td>
+			</tr>
+					</table></td>
+		<td class="sh_ft1" style="width:78px;text-align:center;vertical-align:top;background:#f4f4f4;"><img src="/images/sh_btn_view.png" style="cursor:pointer" onclick="open_Shop('19','1','');"></td>
+	</tr>
+		</table>
+<p> <br><br>&nbsp;<br><br> </p>			</div>
+		</div><!--//smid-->
+	</div><!--sub_mid-->
+	<div style="float:left;">    <div id="divMenu" class="rban">
+	<div class="rban_txt" style="background:url(/images/rb_bg.gif);">
+	<img src="/images/rb_s1.gif"><br><a href="/main.php?mkey=3&w=1">조합원가입</a> <br><a href="/main.php?mkey=2&w=3">오늘의 식단</a><br> <a href="#" onclick="window.open('/pages/hours.php','','width=730,height=600,scrollbars=yes');" onfocus="this.blur()" >매장시간</a> <br> <a href="/main.php?mkey=5&w=2&l=2">콘도예약</a> <!--<br> <a href="/main.php?mkey=5&w=3&l=3">수련원예약</a> --></div><a href="#"><img src="/images/rb_s2.gif" border="0"></a>
+	</div></div>
+</div><!--//sub_layout-->
+
+<!--bottom-->
+	<div class="bm_bg">
+	<div class="bm_menu"><!--생협사무실 위치안내  &nbsp; &nbsp;  --><a href="/main.php?mkey=6">사이트맵  </a>&nbsp; &nbsp;  <a href="/main.php?mkey=6&w=2">개인정보취급방침</a>  &nbsp; &nbsp;  <a href="/main.php?mkey=6&w=3">관련사이트</a>  &nbsp; &nbsp;  <a href="http://www.ssu.ac.kr/web/kor/home_visual" target="_blank">숭실대학교 홈페이지</a></div></div>
+
+<div class="bottom"><li class="bott_logo"><img src="/images/bot_logo2.gif" onclick="location.href='/admin/';"></li><li class="bott_txt"><span class="bott_address">숭실대학교 생활협동조합 &nbsp; 156-746 서울시 동작구 상도로 369 숭실대학교 학생회관 212호 &nbsp; Tel. 02-820-0077 &nbsp; Fax. 02-820-0883</span><br>
+<span class="copyright">COPYRIGHTS(C) SOONGSILCOOP ALL RIGHTS RESERVED.</span></li>
+</div>
+
+<!--//bottom-->
+
+<div id="loadAlt" style="position:absolute;z-index:3;display:none;border:4px solid #C82502;background:#ffffff;left:500px;top:300px;border-radius:15px;overflow:hidden;padding:50px 100px 50px 100px;text-align:center;color:#004B97;font-weight:bold;">
+	<img src="/images/loading.gif"><br>잠시만 기다려 주세요
+</div>
+
+<!--비밀번호//-->
+<div id="chkPass" style="z-index:3;position:absolute;border:1px solid #6F0000;background:#ffffff;width:565px;height:300px;top:0;left:0;right:0;bottom:0;margin:auto;border-radius:15px;overflow:hidden;display:none;">
+<table style="width:565px;" border="0" cellpadding="0" cellspacing="0">
+<tr>
+	<td style="background:#6F0000;color:#ffffff;font-weight:bold;cursor:pointer;">&nbsp;</td>
+</tr>
+<tr><td bgcolor="#efc58d" height="1"></td></tr>
+<tr><td valign="top">
+<table width="565" height="92" border="0" align="center" cellpadding="0" cellspacing="0">
+  <tr>
+    <td height="92" align="left" valign="top" style="padding:13px 0 20px 25px;"><img src="/images/pw_top2.gif"><br><img src="/images/pw_top_L.gif"></td>
+  </tr>
+</table>
+<table width="424" height="85" border="0" align="center" cellpadding="0" cellspacing="0">
+  <tr><td valign="bottom"><img src="/images/pw_s1.gif" width="424" height="11"></td>
+  <tr>
+    <td width="525" align="center" background="/images/pw_L.gif">
+	<form name="passFom" action="" method="post" onsubmit="return false">
+	 <table width="341" height="41" align="center" valign="top">
+		<tr>
+		  <td style="width:55px;text-align:center;">비밀번호</td>
+          <td width="276" align="center"><input name="upass" id="upass" type="password" class="frm" style="height:18px;width:200px;" onkeydown="if(event.keyCode==13){nbs_passFom();};" onkeyup="text_specialCheck('upass','비밀번호','null_base');">
+              <img src="/images/btn_ok.gif" align="absmiddle" style="cursor:pointer;" onclick="nbs_passFom();"></td>
+		</tr>
+    </table>
+	</form>
+	</td>
+  </tr>
+  <tr><td valign="top"><img src="/images/pw_s2.gif" width="424" height="11"></td>
+  <tr></tr>
+</table>
+</td></tr>
+<tr><td height="55" style="text-align:center;padding:0 0 30px 0;"><img src="/images/b_close.gif" style="cursor:pointer;" onclick="clearOpa('chkPass','mainBody')"></td></tr>
+</table>
+</div>
+<form name="movFom" method="post">
+<input type="hidden" name="move" id="move">
+<input type="hidden" name="code" id="code" value="">
+<input type="hidden" name="num" id="num" value="">
+<input type="hidden" name="page" id="page" value="">
+<input type="hidden" name="w" id="w" value="1">
+<input type="hidden" name="mkey" id="mkey" value="2">
+<input type="hidden" name="searchword" id="searchword" value="">
+<input type="checkbox" name="search[]" value="title" style="display:none;" >
+<input type="checkbox" name="search[]" value="content" style="display:none;" >
+<input type="checkbox" name="search[]" value="writer" style="display:none;" >
+</form>
+<div id="mainBody" style="position:absolute;left:0;top:0;right:0;bottom:0;width:100%;margin:0 auto;display:none;text-align:center;background:#ffffff;opacity:0.3;filter:alpha(opacity=30);"></div>
+<div id="altBox" style="position:absolute;display:none;width:443px;height:180px;top:0;left:0;right:0;bottom:0;margin:auto;padding:1px 5px 5px 1px;background:#E9E9E9;border-radius:3px;z-index:2;overflow:hidden;">
+	<table style="background:#ffffff;border:1px solid #B5B5B5;border-radius:3px;width:440px;">
+		<tr>
+			<td colspan="2" style="text-align:left;color:#999999;padding:7px;">숭실대학교 생활협동조합 메세지</td>
+		</tr>
+		<tr>
+			<td style="font-size:40pt;color:#ff0000;text-align:left;text-shadow:0 2px 2px #000000;padding:10px 10px 10px 30px;">!</td>
+			<td style="padding:10px 30px 10px 10px;text-align:left;line-height:170%;" id="altmsg"></td>
+		</tr>
+		<tr>
+			<td colspan="2" style="padding:20px 30px 20px 0;background:#dddddd;text-align:right;" id="useAltButton">
+			<input id="altMsgButton" type="button" value=" 확인 " onclick="LayerUpOff('mainBody','none');LayerUpOff('altBox','none');"></td>
+		</tr>
+	</table>
+</div>
+<script type="text/javascript">
+var JsHost = (("https:" == document.location.protocol) ? "https://" : "http://");
+var sTime = new Date().getTime();
+document.write(unescape("%3Cscript id='log_script' src='" + JsHost + "coop20.weblog.cafe24.com/weblog.js?uid=coop20_5&t="+sTime+"' type='text/javascript'%3E%3C/script%3E"));
+</script>
+</body>
+</html>

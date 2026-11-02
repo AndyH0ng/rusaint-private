@@ -5,6 +5,7 @@
 
 mod campus;
 mod dorm;
+mod hours;
 mod text;
 
 use std::fmt;
@@ -17,9 +18,14 @@ use tokio::sync::Mutex;
 
 pub use campus::{menu_status, parse_campus};
 pub use dorm::parse_dorm;
+pub use hours::{
+    Corner, CornerHours, StoreHours, parse_corner_hours, parse_dorm_hours, parse_store_hours,
+};
 
 const CAMPUS_MENU_URL: &str = "https://soongguri.com/m/m_req/m_menu.php";
 const DORM_MENU_URL: &str = "https://ssudorm.ssu.ac.kr:444/SShostel/mall_main.php";
+const STORE_HOURS_URL: &str = "https://soongguri.com/main.php?mkey=2&w=1";
+const DAILY_MENU_URL: &str = "https://soongguri.com/main.php?mkey=2&w=3&l=1";
 const USER_AGENT: &str = concat!(
     "rusaint-meal/",
     env!("CARGO_PKG_VERSION"),
@@ -239,7 +245,43 @@ impl MealClient {
         Ok(parse_dorm(&html))
     }
 
+    /// 식당·편의점·카페·서점의 위치, 연락처, 평일/주말 운영 시간
+    pub async fn store_hours(&self) -> Result<Vec<StoreHours>, MealError> {
+        let body = self.request(self.http.get(STORE_HOURS_URL)).await?;
+        Ok(parse_store_hours(&String::from_utf8_lossy(&body)))
+    }
+
+    /// `date` 의 식당별 코너 이름과 배식 시간. 이번 주(월~토)가 아니면 빈 코너가 옵니다.
+    pub async fn corner_hours(&self, date: NaiveDate) -> Result<Vec<CornerHours>, MealError> {
+        let sdt = date.format("%Y%m%d").to_string();
+        let body = self
+            .request(
+                self.http
+                    .post(DAILY_MENU_URL)
+                    .form(&[("sdt", sdt.as_str()), ("jun", "0")]),
+            )
+            .await?;
+        Ok(parse_corner_hours(&String::from_utf8_lossy(&body)))
+    }
+
+    /// 기숙사 식당 배식 시간 안내 (평일·주말)
+    pub async fn dorm_hours(&self) -> Result<Vec<String>, MealError> {
+        let body = self
+            .get(
+                DORM_MENU_URL,
+                &[("viewform", "B0001_foodboard_list"), ("board_no", "1")],
+            )
+            .await?;
+        let (html, _, _) = encoding_rs::EUC_KR.decode(&body);
+        Ok(parse_dorm_hours(&html))
+    }
+
     async fn get(&self, url: &str, query: &[(&str, &str)]) -> Result<Vec<u8>, MealError> {
+        self.request(self.http.get(url).query(query)).await
+    }
+
+    /// 요청 사이에 최소 간격을 두고 보냅니다.
+    async fn request(&self, request: reqwest::RequestBuilder) -> Result<Vec<u8>, MealError> {
         let mut last = self.last_request.lock().await;
         if let Some(at) = *last {
             let elapsed = at.elapsed();
@@ -247,7 +289,7 @@ impl MealClient {
                 tokio::time::sleep(MIN_REQUEST_INTERVAL - elapsed).await;
             }
         }
-        let result = self.http.get(url).query(query).send().await;
+        let result = request.send().await;
         *last = Some(Instant::now());
         let response = result?;
         if !response.status().is_success() {

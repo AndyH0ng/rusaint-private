@@ -1,0 +1,1403 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Expires" content="-1"> 
+<meta http-equiv="Pragma" content="no-cache"> 
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta name='robots' content='noindex' /> 
+<meta name="viewport"
+			content="width=device-width, initial-scale=0.4,
+					maximum-scale=1.0, minimum-scale=0.3,
+					user-scalable=yes" />
+<title>숭실대학교 생활협동조합</title>
+
+<link rel="Stylesheet" herf="/lib/soongsil.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/earlyaccess/nanumgothic.css" type="text/css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/font-nanum/1.0/nanumbarungothic/nanumbarungothic.css">
+<link rel="Stylesheet" href="/lib/soongsil.css" type="text/css">
+<script type="text/javascript" src="/nbs/lib/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/nbs/lib/ajax.js"></script>
+<script type="text/javascript" src="/nbs/lib/dnd.js"></script>
+<script type="text/javascript" src="/nbs/lib/event.js"></script>
+<script type="text/javascript" src="/nbs/lib/nbs_js.js"></script>
+<script type="text/javascript" src="/nbs/lib/editor.js"></script>
+
+<!--메인바로가기버튼-->
+<script language="JavaScript" type="text/JavaScript">
+<!--
+function MM_swapImgRestore() { //v3.0
+  var i,x,a=document.MM_sr; for(i=0;a&&i<a.length&&(x=a[i])&&x.oSrc;i++) x.src=x.oSrc;
+}
+
+function MM_preloadImages() { //v3.0
+  var d=document; if(d.images){ if(!d.MM_p) d.MM_p=new Array();
+    var i,j=d.MM_p.length,a=MM_preloadImages.arguments; for(i=0; i<a.length; i++)
+    if (a[i].indexOf("#")!=0){ d.MM_p[j]=new Image; d.MM_p[j++].src=a[i];}}
+}
+
+function MM_findObj(n, d) { //v4.01
+  var p,i,x;  if(!d) d=document; if((p=n.indexOf("?"))>0&&parent.frames.length) {
+    d=parent.frames[n.substring(p+1)].document; n=n.substring(0,p);}
+  if(!(x=d[n])&&d.all) x=d.all[n]; for (i=0;!x&&i<d.forms.length;i++) x=d.forms[i][n];
+  for(i=0;!x&&d.layers&&i<d.layers.length;i++) x=MM_findObj(n,d.layers[i].document);
+  if(!x && d.getElementById) x=d.getElementById(n); return x;
+}
+
+function MM_swapImage() { //v3.0
+  var i,j=0,x,a=MM_swapImage.arguments; document.MM_sr=new Array; for(i=0;i<(a.length-2);i+=3)
+   if ((x=MM_findObj(a[i]))!=null){document.MM_sr[j++]=x; if(!x.oSrc) x.oSrc=x.src; x.src=a[i+2];}
+}
+//-->
+</script>
+<!--//메인바로가기버튼-->
+<style>
+.board-list{text-align:center; color:#000000;padding:5px 0 5px 0;border-bottom:1px dotted #2d90b4;font-size:9.2pt;}
+.board-list-tit{text-align:left; color:#000000;padding:5px 0 5px 0;border-bottom:1px dotted #2d90b4; font-size:9.2pt;cursor:pointer;}
+.board-list-tit-over{text-align:left; color:#D56204;padding:5px 0 5px 0;border-bottom:1px dotted #2d90b4; font-size:9.2pt;cursor:pointer;}
+.board-txt{text-align:center; color:#000000;font-size:9.6pt; line-height:140%;}
+</style>
+
+</head>
+
+<!--<body  oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onmousedown="if(event.button==2){mouseClose();};">-->
+<body>
+<input type="hidden" id="getPageType" value="clientPage">
+<!--tm-->
+	 <div class="tmbg">
+    <div class="tm"><input type="hidden" id="subread" value=""><input type="hidden" id="dsize" value="0"><input type="hidden" id="tv" value=""><input type="hidden" id="menuStatus" value="0"><a href="/">홈</a> &nbsp;&nbsp;<a href="/main.php?mkey=3&w=5">로그인</a> &nbsp;&nbsp; <a href="/menu/" target="_blank">급식관리</a> &nbsp;&nbsp; <a href="/main.php?mkey=6">사이트맵</a></div>
+	</div>
+<!--tm-->
+<!--메인메뉴_임시 -->
+	<div class="mn_layout" onmouseover="">
+	<div class="mn_logo"><a href="/index.php"><img src="/images/logo2.gif" border="0"></a></div>
+	<div class="mn_left"></div>
+	<div style="float:left;height:102px;" id="ssuMenu">
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=1&w=1';">생협안내</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=2&w=1';">매장안내</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=3&w=1';">조합원광장</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=4&w=4';">커뮤니티</div>
+		<div class="mn" onmouseover="menuMouseUp();" onclick="location.href='main.php?mkey=5&w=1';">예약</div>
+		</div>
+	</div>
+	<!--<div style="background:#ffffff;display:block;position:absolute;top:0;z-index:1;
+width:100%;height:132px;"></div>서브메뉴가리개//-->
+	<!--메인메뉴 높이  132 서브메뉴 세로 190 border-top 10 , border-bottom 1 시작위치(132-190-10-1) -69 서브로딩=top:132//-->
+	<div id="subBack" class="sm_bg">
+		<!--서브메뉴//-->
+		<div id="subMenu" class="sm_wrap">
+			<div style="float:left;width:400px;height:190px;"></div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=1&w=1';" id="sm_but1_1" class="sm_ft" onmouseover="changeButStyle('sm_but1_1','sm_ft_over');" onmouseout="changeButStyle('sm_but1_1','sm_ft');">이사장 인사말</div>
+								<div onclick="location.href='main.php?mkey=1&w=2';" id="sm_but1_2" class="sm_ft" onmouseover="changeButStyle('sm_but1_2','sm_ft_over');" onmouseout="changeButStyle('sm_but1_2','sm_ft');">생협소개</div>
+								<div onclick="location.href='main.php?mkey=1&w=3';" id="sm_but1_3" class="sm_ft" onmouseover="changeButStyle('sm_but1_3','sm_ft_over');" onmouseout="changeButStyle('sm_but1_3','sm_ft');">연혁</div>
+								<div onclick="location.href='main.php?mkey=1&w=4';" id="sm_but1_4" class="sm_ft" onmouseover="changeButStyle('sm_but1_4','sm_ft_over');" onmouseout="changeButStyle('sm_but1_4','sm_ft');">정관</div>
+								<div onclick="location.href='main.php?mkey=1&w=5';" id="sm_but1_5" class="sm_ft" onmouseover="changeButStyle('sm_but1_5','sm_ft_over');" onmouseout="changeButStyle('sm_but1_5','sm_ft');">운영조직</div>
+								<div onclick="location.href='main.php?mkey=1&w=6';" id="sm_but1_6" class="sm_ft" onmouseover="changeButStyle('sm_but1_6','sm_ft_over');" onmouseout="changeButStyle('sm_but1_6','sm_ft');">생협현황</div>
+								<div onclick="location.href='main.php?mkey=1&w=7';" id="sm_but1_7" class="sm_ft" onmouseover="changeButStyle('sm_but1_7','sm_ft_over');" onmouseout="changeButStyle('sm_but1_7','sm_ft');">생협 찾아오는 길</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=2&w=1';" id="sm_but2_1" class="sm_ft" onmouseover="changeButStyle('sm_but2_1','sm_ft_over');" onmouseout="changeButStyle('sm_but2_1','sm_ft');">직영매장</div>
+								<div onclick="location.href='main.php?mkey=2&w=2';" id="sm_but2_2" class="sm_ft" onmouseover="changeButStyle('sm_but2_2','sm_ft_over');" onmouseout="changeButStyle('sm_but2_2','sm_ft');">임대매장</div>
+								<div onclick="location.href='main.php?mkey=2&w=3';" id="sm_but2_3" class="sm_ft" onmouseover="changeButStyle('sm_but2_3','sm_ft_over');" onmouseout="changeButStyle('sm_but2_3','sm_ft');">식단</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=3&w=1';" id="sm_but3_1" class="sm_ft" onmouseover="changeButStyle('sm_but3_1','sm_ft_over');" onmouseout="changeButStyle('sm_but3_1','sm_ft');">가입안내</div>
+								<div onclick="location.href='main.php?mkey=3&w=2';" id="sm_but3_2" class="sm_ft" onmouseover="changeButStyle('sm_but3_2','sm_ft_over');" onmouseout="changeButStyle('sm_but3_2','sm_ft');">복지혜택</div>
+								<div onclick="location.href='main.php?mkey=3&w=3';" id="sm_but3_3" class="sm_ft" onmouseover="changeButStyle('sm_but3_3','sm_ft_over');" onmouseout="changeButStyle('sm_but3_3','sm_ft');">FAQ</div>
+								<div onclick="location.href='main.php?mkey=3&w=5';" id="sm_but3_5" class="sm_ft" onmouseover="changeButStyle('sm_but3_5','sm_ft_over');" onmouseout="changeButStyle('sm_but3_5','sm_ft');">로그인</div>
+								<div onclick="location.href='main.php?mkey=3&w=6';" id="sm_but3_6" class="sm_ft" onmouseover="changeButStyle('sm_but3_6','sm_ft_over');" onmouseout="changeButStyle('sm_but3_6','sm_ft');">회원가입</div>
+								<div onclick="location.href='main.php?mkey=3&w=7';" id="sm_but3_7" class="sm_ft" onmouseover="changeButStyle('sm_but3_7','sm_ft_over');" onmouseout="changeButStyle('sm_but3_7','sm_ft');">아이디/비밀번호 찾기</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=4&w=4';" id="sm_but4_4" class="sm_ft" onmouseover="changeButStyle('sm_but4_4','sm_ft_over');" onmouseout="changeButStyle('sm_but4_4','sm_ft');">공지사항</div>
+								<div onclick="location.href='main.php?mkey=4&w=3';" id="sm_but4_3" class="sm_ft" onmouseover="changeButStyle('sm_but4_3','sm_ft_over');" onmouseout="changeButStyle('sm_but4_3','sm_ft');">자유게시판</div>
+								<div onclick="location.href='main.php?mkey=4&w=2';" id="sm_but4_2" class="sm_ft" onmouseover="changeButStyle('sm_but4_2','sm_ft_over');" onmouseout="changeButStyle('sm_but4_2','sm_ft');">질문과답변</div>
+								<div onclick="location.href='main.php?mkey=4&w=1';" id="sm_but4_1" class="sm_ft" onmouseover="changeButStyle('sm_but4_1','sm_ft_over');" onmouseout="changeButStyle('sm_but4_1','sm_ft');">모니터링</div>
+								<div onclick="location.href='main.php?mkey=4&w=5';" id="sm_but4_5" class="sm_ft" onmouseover="changeButStyle('sm_but4_5','sm_ft_over');" onmouseout="changeButStyle('sm_but4_5','sm_ft');">자료실</div>
+							</div>
+							<div class="sm_layout">
+								<div onclick="location.href='main.php?mkey=5&w=1';" id="sm_but5_1" class="sm_ft" onmouseover="changeButStyle('sm_but5_1','sm_ft_over');" onmouseout="changeButStyle('sm_but5_1','sm_ft');">식당</div>
+								<div onclick="location.href='main.php?mkey=5&w=2';" id="sm_but5_2" class="sm_ft" onmouseover="changeButStyle('sm_but5_2','sm_ft_over');" onmouseout="changeButStyle('sm_but5_2','sm_ft');">콘도</div>
+								<div onclick="location.href='main.php?mkey=5&w=4';" id="sm_but5_4" class="sm_ft" onmouseover="changeButStyle('sm_but5_4','sm_ft_over');" onmouseout="changeButStyle('sm_but5_4','sm_ft');">차량 및 천막</div>
+								<div onclick="location.href='main.php?mkey=5&w=5';" id="sm_but5_5" class="sm_ft" onmouseover="changeButStyle('sm_but5_5','sm_ft_over');" onmouseout="changeButStyle('sm_but5_5','sm_ft');">내 예약 정보</div>
+							</div>
+					</div>
+		<!--서브 끝//-->	
+	</div>
+		
+	<!--메인메뉴_임시 끝-->
+
+
+<div class="sub_layout">
+	<div class="sub_mid">
+		<div class="loca"><img src="/images/ico_hom.png" align="absmiddle">현재위치 > 매장안내 > 식단<span class="loca_s"> > 오늘의 식단</span> &nbsp; &nbsp; &nbsp; &nbsp; </div>
+		<div class="lemn">
+<!--카테고리명--><div class="le_tit">
+<!--카테고리아이콘--><img src="/images/ico_lemn1.png" align="absmiddle"> 매장안내</div>
+	<div class="le_wrap">
+		<div class="le_mn" style="cursor:pointer;" onclick="location.href='main.php?mkey=2&w=1';"> &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp;직영매장</div>
+			<div class="le_mn" style="cursor:pointer;" onclick="location.href='main.php?mkey=2&w=2';"> &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp;임대매장</div>
+			<div class="le_mn" style="cursor:pointer;" onclick="location.href='main.php?mkey=2&w=3';"> &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp;  &nbsp;식단</div>
+			<div class="le_sm" onclick="location.href='main.php?mkey=2&w=3&l=1';"><img src="/images/ico2.gif" align="absmiddle">오늘의 식단</div>
+			<div class="le_sm" onclick="location.href='main.php?mkey=2&w=3&l=2';"><img src="/images/ico2.gif" align="absmiddle">주간 식단</div>
+		
+	<br><img src="/images/b.gif" width="1" height="20">
+	<br><img src="/images/le_phone2.png">
+	</div><!--le_wrap-->
+	<div class="le_s"></div>
+</div>		<div class="smid">
+			<div class="ct"><img src="/images/ico_ct.png" align="absmiddle">오늘의 식단</div>
+			 			<div class="detail_center">
+			<style>
+.menu_mn{text-align:center;background:#dddddd;color:#000000;padding:5px 0 5px 0;font-weight:bold;border:1px solid #999999;text-shadow:1px 1px 1px #ffffff;}
+.time_mn{font-weight:normal;font-size:10pt;}
+</style>
+
+<div style="text-align:center;width:100%;">
+<table style="width:850px;" cellpadding="0" cellspacing="1" border="0">
+	<tr>
+		<td colspan="6" style="padding:0 0 15px 0;">
+			<div id="menuWeek" class="moveWeek" style="margin:0 auto;">
+			<div style="position:absolute;width:150px;height:27px;border-radius:10px 0 0 10px;cursor:pointer;margin-top:-5px;margin-left:-5px;z-index:1;" onmouseover="chgRad('menuWeek','moveWeek_onA');"  onmouseout="chgRad('menuWeek','moveWeek');" onmousedown="chgRad('menuWeek','moveWeek_downA');"  onmouseup="chgRad('menuWeek','moveWeek_onA');" onclick="document.restForm.jun.value='-1';document.restForm.submit();"></div>
+			<div style="position:absolute;width:150px;height:27px;border-radius:0 10px 10px 0;cursor:pointer;margin-top:-5px;margin-left:155px;z-index:1;" onmouseover="chgRad('menuWeek','moveWeek_onB');"  onmouseout="chgRad('menuWeek','moveWeek');" onmousedown="chgRad('menuWeek','moveWeek_downB');"  onmouseup="chgRad('menuWeek','moveWeek_onB');" onclick="document.restForm.jun.value='1';document.restForm.submit();"></div>
+			<div style="width:310px;height:30px;margin-top:-5px;margin-left:-5px;position:absolute;"></div>
+			<span style="color:#f7f7f7;font-size:12pt;">◀</span>&nbsp;&nbsp;&nbsp; 2026.11.02~2026.11.07 &nbsp;&nbsp;&nbsp;<span style="color:#f7f7f7;font-size:12pt;">▶</span>
+				
+			</div>	
+		</td>
+	</tr>
+	<tr>
+								<td class='yo_mn' onmouseover="changeClass(this,'yo_mns2');" onmouseout="changeClass(this,'yo_mn');" onclick="document.restForm.sdt.value=20261102;document.restForm.submit();">
+						월요일 <span style='font-weight:normal;'>(11/02)</span></td>
+								<td class='yo_mns2' onmouseover="changeOpa(this,0.7);" onmouseout="changeOpa(this,1);">
+						화요일 <span style='font-weight:normal;'>(11/03)</span></td>
+								<td class='yo_mn' onmouseover="changeClass(this,'yo_mns2');" onmouseout="changeClass(this,'yo_mn');" onclick="document.restForm.sdt.value=20261104;document.restForm.submit();">
+						수요일 <span style='font-weight:normal;'>(11/04)</span></td>
+								<td class='yo_mn' onmouseover="changeClass(this,'yo_mns2');" onmouseout="changeClass(this,'yo_mn');" onclick="document.restForm.sdt.value=20261105;document.restForm.submit();">
+						목요일 <span style='font-weight:normal;'>(11/05)</span></td>
+								<td class='yo_mn' onmouseover="changeClass(this,'yo_mns2');" onmouseout="changeClass(this,'yo_mn');" onclick="document.restForm.sdt.value=20261106;document.restForm.submit();">
+						금요일 <span style='font-weight:normal;'>(11/06)</span></td>
+								<td class='yo_mn' onmouseover="changeClass(this,'yo_mns2');" onmouseout="changeClass(this,'yo_mn');" onclick="document.restForm.sdt.value=20261107;document.restForm.submit();">
+						토요일 <span style='font-weight:normal;'>(11/07)</span></td>
+			</tr>
+	<tr>
+		<td colspan="6" style="height:5px;"></td>
+	</tr>
+		<tr>
+		<td colspan="6" class="rest_nm">학생식당</td>
+	</tr>
+		<tr>
+		<td colspan="6">
+			<table style="width:100%;" cellpadding="0" cellspacing="0" border="0" >
+								<tr>
+										<td style="width:425px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:425px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+				<tr>
+										<td class="rest_mn" style="width:425px;line-height:170%;"> 조식(천원의 아침)<br><span class="time_mn">평일 : 08:10~09:20</span></td>
+										<td class="rest_mn" style="width:425px;line-height:170%;">점심 1코너<br><span class="time_mn">평일 : 11:20~14:00</span></td>
+									</tr>
+				
+				<tr>
+										<td style="width:425px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<img src='/images/m_rec.png'><img src='/images/ico_recmenu.gif'><br><div style="font-size: 12.5333px;"><div><b><font color="#330000" size="4">[천원의아침밥]</font></b></div><div><font size="4"><br></font></div></div><div style=""><div style="font-size: 12.5333px;"><font size="4" color="#ff6600" face="verdana"><b style="">★ 스팸계란볶음밥 &amp; 도쿄멘치카츠&nbsp;</b><b>- 1.0</b></font></div><div style="font-size: 12.5333px;"><br></div><div style=""><div style=""><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none; background-color: rgb(255, 255, 255);"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><article class="text-token-text-primary w-full focus:outline-none scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:1485b3f9-3935-4401-8664-fad64fdc7722-7" data-testid="conversation-turn-16" data-scroll-anchor="true" data-turn="assistant" style=""><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)" style=""><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1" style=""><div class="flex max-w-full flex-col grow" style=""><div data-message-author-role="assistant" data-message-id="337f950b-3503-408d-9cb4-73d5e4d453c9" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-5" data-message-model-slug="gpt-5" style=""><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[3px]" style=""><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-69115d73-8b8c-8322-bce4-4baca2fa7e1a-5" data-testid="conversation-turn-14" data-scroll-anchor="true" data-turn="assistant" style=""><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)" style=""><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1" style=""><div class="flex max-w-full flex-col grow" style=""><div data-message-author-role="assistant" data-message-id="393b999d-fb7a-44d6-ae11-a7a4c72f513c" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5" style=""><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]" style=""><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-69115d73-8b8c-8322-bce4-4baca2fa7e1a-23" data-testid="conversation-turn-50" data-scroll-anchor="true" data-turn="assistant" style=""><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)" style=""><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1" style=""><div class="flex max-w-full flex-col grow" style=""><div data-message-author-role="assistant" data-message-id="a5c1486a-17f0-4e9e-904c-9fa19b34b38a" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-mini" style=""><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]" style=""><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:bb19f476-86a7-4c74-83f8-f97e0cbcdb97-4" data-testid="conversation-turn-10" data-scroll-anchor="true" data-turn="assistant" style=""><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)" style=""><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1" style=""><div class="flex max-w-full flex-col grow" style=""><div data-message-author-role="assistant" data-message-id="7ec3b136-c554-4049-b31a-96f4c8a31e75" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-1" style=""><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]" style=""><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><font size="4">Spam and Egg Fried Rice, Tokyo-Style Japanese Minced Pork Cutlet</font></div></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div></div></div></div></div></div></article></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div><br></div></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><table border="0" cellpadding="0" cellspacing="0" width="124" style="font-size: 12.5333px; border-collapse: collapse; width: 93pt;"><colgroup><col width="124" style="width: 93pt;"></colgroup><tbody><tr height="20" style="height: 15pt;"><td height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><table width="100%" style="font-family: &quot;&quot;;"><tbody><tr><td class="monthlyCal" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;"></td><td class="monthlyCal" align="right" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;"></td></tr><tr><td class="monthlyCal" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;">콘샐러드</td><td class="monthlyCal" align="right" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;"><br></td></tr><tr><td class="monthlyCal" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;">깍두기</td><td class="monthlyCal" align="right" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;"><br></td></tr><tr><td class="monthlyCal" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;">가쓰오장국</td></tr></tbody></table></td></tr><tr height="20" style="height: 15pt;"><td height="20" class="xl65" width="124" style="height: 15pt; border-top: none; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td height="20" class="xl65" width="124" style="height: 15pt; border-top: none; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td height="20" class="xl65" width="124" style="height: 15pt; border-top: none; width: 93pt;"><br></td></tr></tbody></table></div></li></ul></div></li></ul></div></li></ul></div></li></ul></div></li></ul></div></li></ul></div></li></ul></div></li></ul></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><table border="0" cellpadding="0" cellspacing="0" width="125" style="border-collapse: collapse; width: 95pt;"><colgroup><col width="73" style="width: 55pt;"><col width="6" style="width: 5pt;"><col width="46" style="width: 35pt;"></colgroup><tbody></tbody></table><span style="background-color: rgb(255, 255, 255); font-size: 12.5333px;">*알러지유발식품:</span></div></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);"><br></div><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);">*원산지:</div><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);"><div style="font-size: 12.5333px;"><br></div></div></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_1_6.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+										<td style="width:425px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<img src='/images/m_rec.png'><img src='/images/ico_recmenu.gif'><br><div style="font-size: 12.5333px;"><div><font size="4"><b><font color="#330000">[Hot Pot]</font></b><br></font></div><div><font size="4"><br></font></div></div><div style=""><div style="font-size: 12.5333px;"><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">★ 투다리st김치우동&nbsp;</b><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">- 5.0</b></div><div style="font-size: 12.5333px;"><br></div><div style=""><font size="4">Tudari-Style Kimchi Udon</font></div><div style=""><ul class="mean_list" style="background-color: rgb(255, 255, 255); margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><br></div></li></ul><div><br></div><div>통살새우볼</div><ul class="mean_list" style="background-color: rgb(255, 255, 255); margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style="">미니밥</div></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style="">얇은반달단무지</div></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><table border="0" cellpadding="0" cellspacing="0" width="124" style="font-size: 12.5333px; border-collapse: collapse; width: 93pt;"><colgroup><col width="48" style="width: 36pt;"><col width="76" style="width: 57pt;"></colgroup><tbody><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr></tbody></table><span style="font-size: 12.5333px;">*알러지유발식품:</span></div></li></ul></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);">*원산지:</div><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><br></div></div></div></div></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_1_2.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+									</tr>
+				
+				
+				
+				<tr>
+										<td class="rest_mn" style="width:425px;line-height:170%;">점심 2코너<br><span class="time_mn">평일 : 11:20~14:00</span></td>
+										<td class="rest_mn" style="width:425px;line-height:170%;">점심 3코너<br><span class="time_mn">평일 : 11:20~14:00</span></td>
+									</tr>
+				
+				<tr>
+										<td style="width:425px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<img src='/images/m_rec.png'><img src='/images/ico_recmenu.gif'><br><div style="font-size: 12.5333px;"><div><font size="4"><b><font color="#330000">[Daily Rice]</font></b><br></font></div><div><b style="color: rgb(255, 51, 255); font-size: large;">♥</b><font size="4" style="color: rgb(255, 51, 255);"><b>특선메뉴</b></font><font size="4"></font></div></div><div style=""><div style="font-size: 12.5333px;"><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">★ 삼겹살차슈덮밥&nbsp;</b><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">- 6.0</b></div><div style="font-size: 12.5333px;"><br></div><div style=""><font size="4">Pork Belly Chashu Rice Bowl</font></div><div style=""><ul class="mean_list" style="background-color: rgb(255, 255, 255); margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><br></div></li></ul><div><br></div><div>그린샐러드</div><ul class="mean_list" style="background-color: rgb(255, 255, 255); margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style="">가쓰오장국</div></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style="">깍두기</div></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><table border="0" cellpadding="0" cellspacing="0" width="124" style="font-size: 12.5333px; border-collapse: collapse; width: 93pt;"><colgroup><col width="48" style="width: 36pt;"><col width="76" style="width: 57pt;"></colgroup><tbody><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr></tbody></table><span style="font-size: 12.5333px;">*알러지유발식품:</span></div></li></ul></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);">*원산지:</div><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><br></div></div></div></div></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_1_3.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+										<td style="width:425px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<img src='/images/m_rec.png'><img src='/images/ico_recmenu.gif'><br><div style="font-size: 12.5333px;"><div><font size="4"><b><font color="#330000">[Chef's Table]</font></b><br></font></div><div><font size="4"><br></font></div></div><div style=""><div style="font-size: 12.5333px;"><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">★ 베이컨크림카레파스타 &amp; 칼집소시지꼬치&nbsp;</b><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">- 5.0</b></div><div style="font-size: 12.5333px;"><br></div><div style=""><font size="4">Bacon Cream Curry Pasta, Grilled Sausage Skewers</font></div><div style=""><ul class="mean_list" style="background-color: rgb(255, 255, 255); margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><br></div></li></ul><div><br></div><div>가쓰오장국</div><ul class="mean_list" style="background-color: rgb(255, 255, 255); margin: 3px 0px 0px; padding: 0px; list-style: none;"><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style="">오이피클</div></li><li class="mean_item" lang="ko" style="margin: 0px; padding: 0px; line-height: 20px;"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling" style=""><table border="0" cellpadding="0" cellspacing="0" width="124" style="font-size: 12.5333px; border-collapse: collapse; width: 93pt;"><colgroup><col width="48" style="width: 36pt;"><col width="76" style="width: 57pt;"></colgroup><tbody><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr><tr height="20" style="height: 15pt;"><td colspan="2" height="20" class="xl65" width="124" style="height: 15pt; width: 93pt;"><br></td></tr></tbody></table><span style="font-size: 12.5333px;">*알러지유발식품:</span></div></li></ul></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);">*원산지:</div><div style="font-size: 12.5333px; background-color: rgb(255, 255, 255);"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><br></div></div></div></div></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_1_4.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+									</tr>
+				<tr>
+										<td style="width:425px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:425px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+							</table>
+		</td>
+	</tr>
+	
+		<tr>
+		<td colspan="6" class="rest_nm">숭실도담</td>
+	</tr>
+		<tr>
+		<td colspan="6">
+			<table style="width:100%;" cellpadding="0" cellspacing="0" border="0" >
+								<tr>
+										<td style="width:msizepx;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:msizepx;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:msizepx;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+				<tr>
+										<td class="rest_mn" style="width:283.33333333333px;line-height:170%;">점심 1코너<br><span class="time_mn">평일 : 11:20 ~ 14:00 / 주말 : 11:20 ~ 13:30</span></td>
+										<td class="rest_mn" style="width:283.33333333333px;line-height:170%;">점심 2코너<br><span class="time_mn">평일 : 11:20 ~ 14:00</span></td>
+										<td class="rest_mn" style="width:283.33333333333px;line-height:170%;">석식 1코너<br><span class="time_mn">평일 : 17:00 ~ 18:30</span></td>
+									</tr>
+				
+				<tr>
+										<td style="width:283.33333333333px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table  border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<img src='/images/ico_newmenu.gif'><br><div style="font-size: 12.5333px;"><b style="color: rgb(255, 51, 51); font-size: x-large;">Serve</b><font color="#ff6633" style="font-size: 9.4pt;"><b><font size="5"> Kitchen</font></b></font></div><div style=""><span data-start="616" data-end="627" style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><span data-start="616" data-end="627" style="font-size: 12.5333px;"><br></span></div><div><b style="color: rgb(255, 102, 0); font-family: verdana; font-size: large;">[대면코너]</b></div><br></span><div style="font-size: 12.5333px;"></div><div style=""><span data-start="616" data-end="627" style=""><div style="font-size: 12.5333px;"><b><font size="4"><font size="4"><font color="#999900">★ </font><font color="#ff0000">목살광주애호박국밥</font></font></font></b></div><div style="font-size: 12.5333px;"><div><b><font size="4"><font size="4"><font color="#999900">★ </font><font color="#339933">새우까스</font></font></font></b></div><div><font color="#009966" size="4"><b><br></b></font></div></div><div style=""><div style=""><span style="font-size: 12.5333px;"><b>목살광주애호박국밥, 새우까스</b></span><b style="font-size: 12.5333px;"><span style="font-size: 12.5333px;">- </span></b><font color="#ff0033" style="font-size: 12.5333px; font-weight: bold;">6.0</font></div><div style=""><div style=""><b style="font-size: 12px;">(</b><span style="font-size: 12.5333px;"><b>Gwangju-style Zucchini Rice Soup with Pork Neck, Shrimp Cutlet</b></span><b style="font-size: 12px;">)</b></div><div style="font-size: 12.5333px;"><span style="font-size: 12px;"><b><br></b></span></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;">새콤향긋한오징어채소무침</div><div style="font-size: 12.5333px;">잡곡밥</div><div style="font-size: 12.5333px;">얼갈이겉절이</div></div></div><div><br></div></div></div></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;">*알러지유발식품: 목살<span>광주애호박국밥(돼지고기, 대</span><span>),</span><span> 새우까스(</span><span>새우),&nbsp;</span><span>새콤향긋한오징어채소무침(오징어),&nbsp;</span><span>얼갈이겉절이(새우)</span></div><div style="font-size: 12.5333px;">*원산지: 목살광주애호박국밥(돈목살: 캐나다산, 두부: 외국산), 새우까스(새우까스: 중국산), 새콤향긋한오징어채소무침(대왕오징어귀채: 페루산)</div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></span></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_2_2.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+										<td style="width:283.33333333333px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table  border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<div style="font-size: 12.5333px;"><strong data-start="1859" data-end="1878" style="font-size: 9.4pt;"><font color="#00cc00"><font size="5">Balance Kitchen</font></font></strong></div><span data-start="616" data-end="627" style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><b style="font-size: large;"><font color="#006600">[프리미엄 코너]</font></b></div><div style="font-size: 12.5333px;"><b style="font-size: large;"><font color="#66cc33">엄선한 식재료로 정성껏 준비한 특별한 한 끼</font></b></div><br></span><div style="font-size: 12.5333px;"></div><div style=""><span data-start="616" data-end="627" style=""><div style="font-size: 12.5333px;"><b><font size="4"><font size="4"><font color="#999900">★ </font><font color="#ff0000">낙지주꾸미비빔밥</font></font></font></b></div><div style=""><div style="font-size: 12.5333px;"><span style="font-size: 12.5333px; font-weight: bold;"><font size="4"><font color="#999900">★ </font><font color="#ff9900">계란후라이</font></font></span></div><div style="font-size: 12.5333px;"><font color="#ff9900" size="4"><b><br></b></font></div><div style=""><div style=""><span style="font-size: 12.5333px;"><b>낙지주꾸미비빔밥, 계란후라이</b></span><b style="font-size: 12.5333px;"><span style="font-size: 12px;">- </span><font color="#ff0033" size="4">7.0</font></b></div><div style=""><div style=""><font style="font-size: 12.5333px;"><b style="font-size: 12.5333px;">(</b></font><font style=""><span style="font-weight: bold;">Octopus and Webfoot Octopus Bibimbap, Fried Egg</span><b style="font-size: 12.5333px;">)</b></font></div><div style="font-size: 12.5333px;"><br></div><div style=""><div style=""><div style=""><span style="font-size: 12.5333px;">우동국물</span></div><div style=""><span style="font-size: 12.5333px;">배추김치</span></div><div style=""><span style="font-size: 12.5333px;">야쿠르트</span></div></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><br></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><font face="맑은고딕">*알러지유발식품:&nbsp;</font><span>낙지주꾸미비빔밥(주꾸미, 낙지</span><span>),</span><span> 계란후라이(난류),&nbsp;</span><span>배추김치(새우),&nbsp;</span><span>야쿠르트(우유</span><span>)</span></div><div><font face="맑은고딕"><span style="font-size: 12.5333px;">*원산지: 낙지주꾸미비빔밥(주꾸미(베트남산), 절단낙지(베트남산), 계란후라이(계란: 국내산)</span></font></div></div></div></div></div></span></div><div></div>
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_2_5.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+										<td style="width:283.33333333333px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table  border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<table style="font-size: 12.5333px;"><tbody><tr><td data-col-size="sm" data-start="1239" data-end="1259"><span data-start="1241" data-end="1258"><font color="#3333cc" size="5"><b>Dinner Kitchen</b></font></span></td></tr></tbody></table><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><span data-start="616" data-end="627" style="font-size: 12.5333px;"><b><font size="4" color="#6600cc">[석식코너]</font></b></span></div><div style=""><span data-start="616" data-end="627" style="font-size: 12.5333px;"><br></span><div style="font-size: 12.5333px;"></div><div style=""><span data-start="616" data-end="627" style=""><div style="font-size: 12.5333px;"><b><font size="4"><span style="color: rgb(153, 153, 0);"><font size="4">★</font></span><font color="#ff0000">&nbsp;고추장양념가래떡</font></font></b></div><div style=""><div style="font-size: 12.5333px;"><span style="font-size: 12.5333px; font-weight: bold;"><font size="4"><font color="#999900">★</font><font color="#ff9900"> </font><font color="#66cccc">계란후라이</font></font></span></div><div style="font-size: 12.5333px;"><span style="font-size: 12.5333px; font-weight: bold;"><font size="4"><font color="#66cccc"><br></font></font></span></div><div style=""><div style=""><span style="font-size: 12.5333px;"><b>고추장양념가래떡, 계란후라이</b></span><b style="font-size: 12.5333px;">- </b><font color="#ff0033" style="font-size: 12.5333px; font-weight: bold;">6.0</font></div><div style=""><div style=""><b style="font-size: 12.5333px;"><span style="font-size: 12.5333px;"><span style="font-size: 12px;">(</span></span></b><span style="font-size: 12.5333px;"><b>Gochujang-seasoned Rice Cake, Fried Egg</b></span><b style="font-size: 12.5333px;">)</b></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;">들기름김</div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;">곤드레무밥*부추양념장</div><div style="font-size: 12.5333px;">맑은콩나물국</div><div style="font-size: 12.5333px;">배추김치</div></div><table border="0" cellpadding="0" cellspacing="0" width="129" style="border-collapse: collapse; width: 97pt;"><colgroup><col width="129" style="width: 97pt;"></colgroup><tbody><tr height="20" style="height: 15pt;"><td height="20" class="xl65" width="129" style="height: 15pt; border-top-width: medium; border-top-style: none; border-top-color: currentcolor; width: 97pt;"><br><br></td></tr></tbody></table><div><div style="font-size: 12.5333px;">*알러지유발식품:&nbsp;<span>고추장양념가래떡(밀),</span><span> 계란후라이(난류), 맑은콩나물국(대두),&nbsp;</span><span>배추김치(새우)</span></div></div><div style="font-size: 12.5333px;">*원산지: 계란후라이(계란: 국내산)</div></div></div></div></div></span></div></div><div></div>
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_2_6.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+									</tr>
+				<tr>
+										<td style="width:283.33333333333px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:283.33333333333px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:283.33333333333px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+							</table>
+		</td>
+	</tr>
+	
+		<tr>
+		<td colspan="6" class="rest_nm">FACULTY LOUNGE</td>
+	</tr>
+		<tr>
+		<td colspan="6">
+			<table style="width:100%;" cellpadding="0" cellspacing="0" border="0" >
+								<tr>
+										<td style="width:msizepx;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+				<tr>
+										<td class="rest_mn" style="width:850px;line-height:170%;">점심 1코너<br><span class="time_mn">평일 : 11:30~14:00</span></td>
+									</tr>
+				
+				<tr>
+										<td style="width:850px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table  border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<img src='/images/m_rec.png'><img src='/images/ico_recmenu.gif'><br><div style="font-size: 12.5333px;"><font face="verdana" color="#ff6600" size="4"><b>★ 해물나가사끼짬뽕 &amp; 목화솜탕수육&nbsp;</b><b>- 7.0</b></font></div><div style="font-size: 12.5333px;"><font face="verdana"><br></font></div><div style="font-size: 12.5333px;"><article class="text-token-text-primary w-full focus:outline-none scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:1485b3f9-3935-4401-8664-fad64fdc7722-11" data-testid="conversation-turn-24" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="df81d37a-45b9-439e-a1d0-7b8e2149dec8" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-5" data-message-model-slug="gpt-5-mini"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[3px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><p data-start="0" data-end="61" data-is-last-node="" data-is-only-node="" style="font-size: 12.5333px;"></p><div aria-hidden="true" data-edge="true" class="pointer-events-none h-px w-px" style="font-size: 12.5333px;"></div><p style="font-size: 12.5333px;"></p><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="58637935-c3cd-4027-b43d-0d5eab97ac0a" data-testid="conversation-turn-2" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="a9dad34d-6d44-4107-80a2-f48d802130a9" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><p data-start="0" data-end="46" data-is-last-node="" data-is-only-node="" style="font-size: 12.5333px;"></p><div aria-hidden="true" data-edge="true" class="pointer-events-none h-px w-px" style="font-size: 12.5333px;"></div><p style="font-size: 12.5333px;"></p><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:d74b6dbd-5467-45fe-aac9-8b34eba2153d-17" data-testid="conversation-turn-36" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="9c1d218d-917f-4b5f-abdb-41ac89ece567" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:518e9255-b26f-4691-8881-fd79d9965f59-3" data-testid="conversation-turn-8" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="9bc6f9f7-895f-463f-beb4-d6a5ede31d67" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-69115d73-8b8c-8322-bce4-4baca2fa7e1a-4" data-testid="conversation-turn-74" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="5370f06b-3d29-4671-b1e0-bad4185e8c2d" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-1"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="6a28db6d-688a-4337-94bf-590f8d4b61bc" data-testid="conversation-turn-2" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="408f5d0f-a15a-414e-8105-7c27d0f3ac2c" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-1"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="bef3257f-09f1-401d-bafd-147e135de5a0" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-1"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:c333e51b-87e7-4fab-8f5f-2616c683ed83-9" data-testid="conversation-turn-20" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="d8289024-c431-46cc-a0bf-f3dc55e2254c" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-1"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:3a0db636-9526-4422-a117-8d64b00fdd8e-6" data-testid="conversation-turn-14" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="38ce2458-f48f-4236-8687-e076112a2975" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto [content-visibility:auto] supports-[content-visibility:auto]:[contain-intrinsic-size:auto_100lvh] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="550ad145-479b-49ce-8a99-601acccfbd33" data-testid="conversation-turn-2" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="54bfd236-23e7-49cb-b87f-648f702988ac" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-WEB:558c41b2-4451-4f77-93b7-d6e7abe5e665-4" data-testid="conversation-turn-10" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="97768237-56fb-4912-99d9-9b65d9f8d80a" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-695ef809-2f68-8321-bd2c-43845f63fb1b-4" data-testid="conversation-turn-26" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="8fe85e57-6983-4485-b85d-bc3fce7f2c6c" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full break-words light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="dc9e037e-30f0-4f2f-8867-c17e0494ec46" data-testid="conversation-turn-38" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="983fd5b3-0852-4a15-a713-ba0b6e453eea" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full wrap-break-word light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-6954854c-746c-8320-9ca7-4a3242067b35-1" data-testid="conversation-turn-42" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="6896199e-6815-40f3-b42c-13931b544ce3" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full wrap-break-word light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="c7e38cd4-3f5f-41dd-8da5-7c6cc5ca5de9" data-testid="conversation-turn-44" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="06215b99-a06f-4330-8dcd-ecb97f82d871" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full wrap-break-word light markdown-new-styling"><div class="flex flex-col text-sm pb-25"><article class="text-token-text-primary w-full focus:outline-none [--shadow-height:45px] has-data-writing-block:pointer-events-none has-data-writing-block:-mt-(--shadow-height) has-data-writing-block:pt-(--shadow-height) [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" tabindex="-1" dir="auto" data-turn-id="request-6954854c-746c-8320-9ca7-4a3242067b35-4" data-testid="conversation-turn-52" data-scroll-anchor="true" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:--spacing(4)] @w-sm/main:[--thread-content-margin:--spacing(6)] @w-lg/main:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1"><div class="flex max-w-full flex-col grow"><div data-message-author-role="assistant" data-message-id="ffe314f7-33d6-4f83-bc19-a48e68cf8d1e" dir="auto" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal [.text-message+&amp;]:mt-1" data-message-model-slug="gpt-5-2"><div class="flex w-full flex-col gap-1 empty:hidden first:pt-[1px]"><div class="markdown prose dark:prose-invert w-full wrap-break-word light markdown-new-styling"><p data-start="0" data-end="63" data-is-last-node="" data-is-only-node=""></p><div aria-hidden="true" class="pointer-events-none -mt-px h-px translate-y-[calc(var(--scroll-root-safe-area-inset-bottom)-14*var(--spacing))]"></div><p></p><div class="qMYqUG_convSearchResultHighlightRoot"><div class="" data-turn-id-container="request-6a0eb937-094c-83a7-a54a-bbcd0811f813-0" data-is-intersecting="true"><section class="text-token-text-primary w-full focus:outline-none has-data-writing-block:pointer-events-none [&amp;:has([data-writing-block])&gt;*]:pointer-events-auto R6Vx5W_threadScrollVars scroll-mb-[calc(var(--scroll-root-safe-area-inset-bottom,0px)+var(--thread-response-height))] scroll-mt-[calc(var(--header-height)+min(200px,max(70px,20svh)))]" dir="auto" data-turn-id="request-6a0eb937-094c-83a7-a54a-bbcd0811f813-0" data-turn-id-container="request-6a0eb937-094c-83a7-a54a-bbcd0811f813-0" data-testid="conversation-turn-34" data-scroll-anchor="false" data-turn="assistant"><div class="text-base my-auto mx-auto pb-10 [--thread-content-margin:var(--thread-content-margin-xs,calc(var(--spacing)*4))] @w-sm/main:[--thread-content-margin:var(--thread-content-margin-sm,calc(var(--spacing)*6))] @w-lg/main:[--thread-content-margin:var(--thread-content-margin-lg,calc(var(--spacing)*16))] px-(--thread-content-margin)"><div class="[--thread-content-max-width:40rem] @w-lg/main:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn"><div class="flex max-w-full flex-col gap-4 grow"><div data-message-author-role="assistant" data-message-id="99625b75-2c6d-4c2e-bede-6c183b4ac0de" dir="auto" data-message-model-slug="gpt-5-5" class="min-h-8 text-message relative flex w-full flex-col items-end gap-2 text-start break-words whitespace-normal outline-none keyboard-focused:focus-ring [.text-message+&amp;]:mt-1" data-turn-start-message="true" tabindex="0"><div class="flex w-full flex-col gap-1 empty:hidden"><div class="markdown prose dark:prose-invert wrap-break-word w-full light markdown-new-styling"><p data-start="0" data-end="66" data-is-last-node="" data-is-only-node=""><font size="4">Seafood Nagasaki Jjamppong, Cotton-Style Sweet and Sour Pork</font></p><p data-start="0" data-end="66" data-is-last-node="" data-is-only-node=""><font face="verdana" size="4"><br></font></p></div></div></div></div></div></div></section></div></div></div></div></div></div></div></div></article></div><span style="background-color: rgb(255, 255, 255);"><div class="markdown prose dark:prose-invert w-full wrap-break-word light markdown-new-styling"></div></span></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></article></div></div></div></div></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div></div></div></div></div></div></article></div><div style="font-size: 12.5333px;"><div><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none; background-color: rgb(255, 255, 255);"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><div class="desc" style="margin: 0px; padding: 0px; overflow: hidden;"><ul class="mean_list" style="margin: 0px; padding: 0px; list-style-type: none;"><li class="mean_list_item" style="margin: 0px; padding: 0px;"><table width="100%" style="font-family: &quot;&quot;;"><tbody><tr><td class="monthlyCal" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;"><br><br>자만두<br>그린샐러드<br>포기김치<br>둥굴레차<br>미니밥<br>사과주스</td><td class="monthlyCal" align="right" style="font-family: &quot;&quot;; font-size: 9pt; height: 10px; margin-top: 0px; margin-bottom: 0px; padding-top: 0px; padding-bottom: 0px;"></td></tr></tbody></table><table border="0" cellpadding="0" cellspacing="0" width="124" style="border-collapse: collapse; width: 93pt;"><colgroup><col width="124" style="width: 93pt;"></colgroup><tbody><tr height="20" style="height: 15pt;"><td height="20" class="xl65" width="124" style="height: 15pt; border-top-width: medium; border-top-style: none; border-top-color: currentcolor; width: 93pt;"><font face="verdana"><br><br></font></td></tr></tbody></table></li></ul></div></li></ul></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><font face="verdana">*알러지유발식품:</font></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><font face="verdana">*원산지:</font></div></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_7_2.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+									</tr>
+				<tr>
+										<td style="width:850px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+							</table>
+		</td>
+	</tr>
+	
+		<tr>
+		<td colspan="6" class="rest_nm">스넥코너</td>
+	</tr>
+		<tr>
+		<td colspan="6">
+			<table style="width:100%;" cellpadding="0" cellspacing="0" border="0" >
+								<tr>
+										<td style="width:283.33333333333px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:283.33333333333px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+										<td style="width:283.33333333333px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+									</tr>
+				<tr>
+										<td class="rest_mn" style="width:283.33333333333px;line-height:170%;">식사류<br>(추억의도시락,치킨마요덮밥)<br><span class="time_mn">평일 : 11:00 ~ 16:00</span></td>
+										<td class="rest_mn" style="width:283.33333333333px;line-height:170%;">국수류<br><span class="time_mn">평일 : 11:00 ~ 16:00</span></td>
+										<td class="rest_mn" style="width:283.33333333333px;line-height:170%;">떡볶이류/라면류<br><span class="time_mn">평일 : 11:00 ~ 16:00</span></td>
+									</tr>
+				
+				<tr>
+										<td style="width:283.33333333333px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b><font color="#ff33cc">[밥 메뉴</font></b><b><font color="#ff33cc">]</font></b></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><b>추억의도시락 </b><b>- <font color="#ff3333">5.0</font></b></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b>치킨마요덮밥 </b><b>- <font color="#ff3333">5.0</font></b></div></div><div></div>
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_4_2.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+										<td style="width:283.33333333333px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b><font color="#ff33cc">[국수 메뉴</font></b><b><font color="#ff33cc">]</font></b></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div><b><font color="#ff3333"><br></font></b></div><div><font color="#ff3333"><b>*신메뉴출시</b></font></div><div><font color="#ff3333"><b><br></b></font></div><div><b><font color="#3333ff">육회들기름쫄면 -</font><font color="#ff3333"> 6.0</font></b></div><div><font color="#ff3333"><b><br></b></font></div><div><div style="font-size: 12.5333px;"><b>잔치국수+갈비만두 2개 </b><b>- <font color="#ff3333">5.0</font></b><b><font color="#ff3333"></font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b>잔치국수+갈비만두 5개 </b><b>- <font color="#ff3333">6.0</font></b><b><font color="#ff3333"></font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b>잔치국수+김밥반줄 </b><b>- <font color="#ff3333">6.0</font></b><b><font color="#ff3333"></font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b>비빔국수+갈비만두 2개 </b><b>- <font color="#ff3333">5.0</font></b><b><font color="#ff3333"></font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b>비빔국수+갈비만두 5개 </b><b>- <font color="#ff3333">6.0</font></b><b><font color="#ff3333"></font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b>비빔국수+김밥반줄 </b><b>- <font color="#ff3333">6.0</font></b></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"></div></div><div style="font-size: 12.5333px;"><br></div></div><div></div>
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_4_3.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+										<td style="width:283.33333333333px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+						<table border="0" cellpadding="0" cellspacing="0">
+							<tr>
+								<td style="vertical-align:top;">
+								<div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b><font color="#ff33cc">[떡볶이 메뉴</font></b><b><font color="#ff33cc">]</font></b></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><b>떡볶이- <font color="#ff3333">3.5</font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div></div><div style="font-size: 12.5333px;"><b>라볶이- <font color="#ff3333">4.5</font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff3333"><br></font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff33cc">[직접 끓여주는 라면</font></b><b><font color="#ff33cc">]</font></b></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><b>숭실라면 </b><b>- <font color="#ff3333">3.5</font></b></div></div><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b>치즈떡라면 </b><b>- <font color="#ff3333">4.3</font></b></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><b>라면+김밥반줄 </b><b>- <font color="#ff3333">5.0</font></b></div></div></div></div></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><br></div></div></div><div></div>
+
+								</td>
+																<td style="vertical-align:top;padding:0 0 0 3px;">
+								<img src='/menu/menu_file/20261103_4_6.jpg' width='130px' align='absmiddle'>								</td>
+															</tr>
+						</table>
+					</td>
+									</tr>
+				
+				
+				<tr>
+					<td style="padding:0" colspan="3">
+						<table style="width:100%" cellpadding="0" cellspacing="1" border="0">
+							<tr>
+																<td class="rest_mn" style="width:425px;line-height:170%;">샐러드<br><span class="time_mn">평일 : 11:00 ~ 16:00</span></td>
+																<td class="rest_mn" style="width:425px;line-height:170%;">김밥<br><span class="time_mn">평일 : 11:00 ~ 16:00</span></td>
+															</tr>
+							
+							<tr>
+																<td style="width:425px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+									<table border="0" cellpadding="0" cellspacing="0">
+										<tr>
+											<td style="vertical-align:top;">
+											<img src='/images/ico_newmenu.gif'><br><b style="font-size: 12.5333px;"><font color="#ff33cc">[샐러드 메뉴</font></b><b style="font-size: 12.5333px;"><font color="#ff33cc">]</font></b><div style="font-size: 12.5333px;"><br></div><div style="font-size: 12.5333px;"><b style=""><font color="#ff0000">* 신메뉴출시</font></b></div><div style="font-size: 12.5333px;"><b><font color="#ff0000">숭실마녀스프 5.0</font></b></div><div style="font-size: 12.5333px;"><b style=""><font color="#ff0000">모닝빵2개 0.5</font></b></div><div style="font-size: 12.5333px;"><b style=""><font color="#ff0000"><br></font></b></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b style="font-size: small;"><font color="#0066ff">-샐러드파스타 7.5</font></b><br></div><div style="font-size: 12.5333px;"><font size="2">포만감을 오랫동안 유지하기 위해 파스타면을 넣은 싱그러운 샐러드!</font></div><div style="font-size: 12.5333px;"><font size="2"><br></font></div><div style="font-size: 12.5333px;"><font size="2"><b><font color="#0066ff">-탄단지샐러드 7.5&nbsp;</font></b></font></div><div style="font-size: 12.5333px;"><font size="2">탄수화물 고구마샐러드,단백질 닭가슴살, 지방 </font><span style="font-size: small;">아몬드를 골고루 섭취!</span></div><div style="font-size: 12.5333px;"><span style="font-size: small;"><br></span></div><div style="font-size: 12.5333px;"><b style="font-size: small;"><font color="#0066ff">-면추가(샐러드) 0.5</font></b></div></div><div style="font-size: 12.5333px;"><b style="font-size: small;"><font color="#0066ff"><br></font></b></div><div style="font-size: 12.5333px;"><b style="font-size: small;"><font color="#0066ff">-삶은계란(샐러드) 0.5</font></b></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+											</td>
+																						<td style="vertical-align:top;padding:0 0 0 3px;">
+											<img src='/menu/menu_file/20261102_4_4.jpg' width='130px' align='absmiddle'>											</td>
+																					</tr>
+									</table>
+								</td>
+																<td style="width:425px;text-align:left;padding:3px;border:1px dotted #999999;vertical-align:top;">
+									<table border="0" cellpadding="0" cellspacing="0">
+										<tr>
+											<td style="vertical-align:top;">
+											<div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b><font color="#ff33cc">[김밥코너</font></b><b><font color="#ff33cc">]</font></b></div><div style="font-size: 12.5333px;"><br></div></div><div style="font-size: 12.5333px;"><div style="font-size: 12.5333px;"><b>숭실김밥 </b><b>- <font color="#ff3333">3.5</font></b></div></div><div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+											</td>
+																						<td style="vertical-align:top;padding:0 0 0 3px;">
+											<img src='/menu/menu_file/20260916_4_5.jpg' width='130px' align='absmiddle'>											</td>
+																					</tr>
+									</table>
+								</td>
+															</tr>
+							<tr>
+																<td style="width:425px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+																<td style="width:425px;height:1px;"><div style="height:1px;overflow:hidden;color:#ffffff;"></div></td>
+															</tr>
+						</table>
+					</td>
+				</tr>
+							</table>
+		</td>
+	</tr>
+	
+		<tr>
+		<td colspan="6" class="rest_nm">푸드코트</td>
+	</tr>
+		<tr>
+		<td colspan="6">
+			<table style="width:100%;" cellpadding="0" cellspacing="1" border="0" >
+				<tr>
+					<td class="rest_nomn">오늘 등록된 메뉴가 없습니다.</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	</table>
+</div>
+<form name="restForm" method="post" action="/main.php?mkey=2&w=3&l=1">
+<input type="hidden" name="sdt" >
+<input type="hidden" name="jun" value="0">
+</form>			</div>
+		</div><!--//smid-->
+	</div><!--sub_mid-->
+	<div style="float:left;">    <div id="divMenu" class="rban">
+	<div class="rban_txt" style="background:url(/images/rb_bg.gif);">
+	<img src="/images/rb_s1.gif"><br><a href="/main.php?mkey=3&w=1">조합원가입</a> <br><a href="/main.php?mkey=2&w=3">오늘의 식단</a><br> <a href="#" onclick="window.open('/pages/hours.php','','width=730,height=600,scrollbars=yes');" onfocus="this.blur()" >매장시간</a> <br> <a href="/main.php?mkey=5&w=2&l=2">콘도예약</a> <!--<br> <a href="/main.php?mkey=5&w=3&l=3">수련원예약</a> --></div><a href="#"><img src="/images/rb_s2.gif" border="0"></a>
+	</div></div>
+</div><!--//sub_layout-->
+
+<!--bottom-->
+	<div class="bm_bg">
+	<div class="bm_menu"><!--생협사무실 위치안내  &nbsp; &nbsp;  --><a href="/main.php?mkey=6">사이트맵  </a>&nbsp; &nbsp;  <a href="/main.php?mkey=6&w=2">개인정보취급방침</a>  &nbsp; &nbsp;  <a href="/main.php?mkey=6&w=3">관련사이트</a>  &nbsp; &nbsp;  <a href="http://www.ssu.ac.kr/web/kor/home_visual" target="_blank">숭실대학교 홈페이지</a></div></div>
+
+<div class="bottom"><li class="bott_logo"><img src="/images/bot_logo2.gif" onclick="location.href='/admin/';"></li><li class="bott_txt"><span class="bott_address">숭실대학교 생활협동조합 &nbsp; 156-746 서울시 동작구 상도로 369 숭실대학교 학생회관 212호 &nbsp; Tel. 02-820-0077 &nbsp; Fax. 02-820-0883</span><br>
+<span class="copyright">COPYRIGHTS(C) SOONGSILCOOP ALL RIGHTS RESERVED.</span></li>
+</div>
+
+<!--//bottom-->
+
+<div id="loadAlt" style="position:absolute;z-index:3;display:none;border:4px solid #C82502;background:#ffffff;left:500px;top:300px;border-radius:15px;overflow:hidden;padding:50px 100px 50px 100px;text-align:center;color:#004B97;font-weight:bold;">
+	<img src="/images/loading.gif"><br>잠시만 기다려 주세요
+</div>
+
+<!--비밀번호//-->
+<div id="chkPass" style="z-index:3;position:absolute;border:1px solid #6F0000;background:#ffffff;width:565px;height:300px;top:0;left:0;right:0;bottom:0;margin:auto;border-radius:15px;overflow:hidden;display:none;">
+<table style="width:565px;" border="0" cellpadding="0" cellspacing="0">
+<tr>
+	<td style="background:#6F0000;color:#ffffff;font-weight:bold;cursor:pointer;">&nbsp;</td>
+</tr>
+<tr><td bgcolor="#efc58d" height="1"></td></tr>
+<tr><td valign="top">
+<table width="565" height="92" border="0" align="center" cellpadding="0" cellspacing="0">
+  <tr>
+    <td height="92" align="left" valign="top" style="padding:13px 0 20px 25px;"><img src="/images/pw_top2.gif"><br><img src="/images/pw_top_L.gif"></td>
+  </tr>
+</table>
+<table width="424" height="85" border="0" align="center" cellpadding="0" cellspacing="0">
+  <tr><td valign="bottom"><img src="/images/pw_s1.gif" width="424" height="11"></td>
+  <tr>
+    <td width="525" align="center" background="/images/pw_L.gif">
+	<form name="passFom" action="" method="post" onsubmit="return false">
+	 <table width="341" height="41" align="center" valign="top">
+		<tr>
+		  <td style="width:55px;text-align:center;">비밀번호</td>
+          <td width="276" align="center"><input name="upass" id="upass" type="password" class="frm" style="height:18px;width:200px;" onkeydown="if(event.keyCode==13){nbs_passFom();};" onkeyup="text_specialCheck('upass','비밀번호','null_base');">
+              <img src="/images/btn_ok.gif" align="absmiddle" style="cursor:pointer;" onclick="nbs_passFom();"></td>
+		</tr>
+    </table>
+	</form>
+	</td>
+  </tr>
+  <tr><td valign="top"><img src="/images/pw_s2.gif" width="424" height="11"></td>
+  <tr></tr>
+</table>
+</td></tr>
+<tr><td height="55" style="text-align:center;padding:0 0 30px 0;"><img src="/images/b_close.gif" style="cursor:pointer;" onclick="clearOpa('chkPass','mainBody')"></td></tr>
+</table>
+</div>
+<form name="movFom" method="post">
+<input type="hidden" name="move" id="move">
+<input type="hidden" name="code" id="code" value="">
+<input type="hidden" name="num" id="num" value="">
+<input type="hidden" name="page" id="page" value="">
+<input type="hidden" name="w" id="w" value="3">
+<input type="hidden" name="mkey" id="mkey" value="2">
+<input type="hidden" name="searchword" id="searchword" value="">
+<input type="checkbox" name="search[]" value="title" style="display:none;" >
+<input type="checkbox" name="search[]" value="content" style="display:none;" >
+<input type="checkbox" name="search[]" value="writer" style="display:none;" >
+</form>
+<div id="mainBody" style="position:absolute;left:0;top:0;right:0;bottom:0;width:100%;margin:0 auto;display:none;text-align:center;background:#ffffff;opacity:0.3;filter:alpha(opacity=30);"></div>
+<div id="altBox" style="position:absolute;display:none;width:443px;height:180px;top:0;left:0;right:0;bottom:0;margin:auto;padding:1px 5px 5px 1px;background:#E9E9E9;border-radius:3px;z-index:2;overflow:hidden;">
+	<table style="background:#ffffff;border:1px solid #B5B5B5;border-radius:3px;width:440px;">
+		<tr>
+			<td colspan="2" style="text-align:left;color:#999999;padding:7px;">숭실대학교 생활협동조합 메세지</td>
+		</tr>
+		<tr>
+			<td style="font-size:40pt;color:#ff0000;text-align:left;text-shadow:0 2px 2px #000000;padding:10px 10px 10px 30px;">!</td>
+			<td style="padding:10px 30px 10px 10px;text-align:left;line-height:170%;" id="altmsg"></td>
+		</tr>
+		<tr>
+			<td colspan="2" style="padding:20px 30px 20px 0;background:#dddddd;text-align:right;" id="useAltButton">
+			<input id="altMsgButton" type="button" value=" 확인 " onclick="LayerUpOff('mainBody','none');LayerUpOff('altBox','none');"></td>
+		</tr>
+	</table>
+</div>
+<script type="text/javascript">
+var JsHost = (("https:" == document.location.protocol) ? "https://" : "http://");
+var sTime = new Date().getTime();
+document.write(unescape("%3Cscript id='log_script' src='" + JsHost + "coop20.weblog.cafe24.com/weblog.js?uid=coop20_5&t="+sTime+"' type='text/javascript'%3E%3C/script%3E"));
+</script>
+</body>
+</html>

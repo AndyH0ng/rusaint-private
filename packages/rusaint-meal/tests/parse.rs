@@ -122,3 +122,61 @@ async fn live_fetch() {
     println!("dorm {} days", week.len());
     assert!(!week.is_empty());
 }
+
+#[test]
+fn store_hours_table() {
+    let stores = rusaint_meal::parse_store_hours(&fixture("store_hours.html"));
+    let student = stores.iter().find(|s| s.name == "학생식당").unwrap();
+    assert_eq!(student.category, "식당");
+    assert_eq!(student.location.as_deref(), Some("학생회관 3층"));
+    assert_eq!(
+        student.weekday.first().map(String::as_str),
+        Some("08:00~09:00 (천원의아침밥)")
+    );
+    assert_eq!(student.weekend, ["휴무(숭실도담 이용 바람)"]);
+    let dodam = stores.iter().find(|s| s.name == "숭실도담식당").unwrap();
+    assert!(dodam.weekend.iter().any(|l| l.contains("11:20")));
+    // 편의점·카페·서점도 함께 나온다
+    for category in ["편의점", "커피점", "서점/문구"] {
+        assert!(stores.iter().any(|s| s.category == category), "{category}");
+    }
+    // 한 줄짜리 구분(서점/문구)도 매장명과 섞이지 않는다
+    let books = stores.iter().find(|s| s.category == "서점/문구").unwrap();
+    assert_eq!(books.name, "서점&문구");
+    assert_eq!(books.location.as_deref(), Some("학생회관 4층"));
+    assert_eq!(books.weekday, ["09:00 ~ 18:00"]);
+}
+
+#[test]
+fn corner_hours_page() {
+    let corners = rusaint_meal::parse_corner_hours(&fixture("corners_20261103.html"));
+    let student = corners.iter().find(|c| c.cafeteria == "학생식당").unwrap();
+    assert_eq!(student.corners[0].name, "조식(천원의 아침)");
+    assert_eq!(
+        student.corners[0].hours.as_deref(),
+        Some("평일 : 08:10~09:20")
+    );
+    let dodam = corners.iter().find(|c| c.cafeteria == "숭실도담").unwrap();
+    assert_eq!(dodam.corners.len(), 3);
+    assert_eq!(dodam.corners[2].name, "석식 1코너");
+    let snack = corners.iter().find(|c| c.cafeteria == "스넥코너").unwrap();
+    assert!(snack.corners[0].name.starts_with("식사류"));
+    assert!(snack.corners.iter().all(|c| c.hours.is_some()));
+}
+
+#[test]
+fn dorm_hours_header() {
+    let bytes = std::fs::read(format!(
+        "{}/tests/fixtures/dorm_20261102.euckr.html",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    let (html, _, _) = encoding_rs::EUC_KR.decode(&bytes);
+    let hours = rusaint_meal::parse_dorm_hours(&html);
+    assert!(hours.iter().any(|l| l.contains("17:00~18:30")), "{hours:?}");
+    assert!(hours.iter().any(|l| l.contains("주말")), "{hours:?}");
+    assert!(
+        hours.iter().any(|l| l.contains("조식은 운영되지 않습니다")),
+        "{hours:?}"
+    );
+}
