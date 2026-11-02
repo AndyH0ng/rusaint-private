@@ -35,4 +35,7 @@ pub mod lecture_assessment;
 
 /// 장학금 수혜내역 조회: [`ScholarshipsApplication`](scholarships::ScholarshipsApplication)
 pub mod scholarships;
+
+/// 입학년도 별 교과과정 조회: [`CurriculumApplication`](curriculum::CurriculumApplication)
+pub mod curriculum;
 pub(crate) mod utils;
