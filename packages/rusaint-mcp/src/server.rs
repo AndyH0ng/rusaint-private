@@ -9,6 +9,7 @@ use rusaint::application::course_grades::CourseGradesApplication;
 use rusaint::application::course_grades::model::CourseType;
 use rusaint::application::course_registration_status::CourseRegistrationStatusApplication;
 use rusaint::application::course_schedule::CourseScheduleApplication;
+use rusaint::application::curriculum::CurriculumApplication;
 use rusaint::application::graduation_requirements::GraduationRequirementsApplication;
 use rusaint::application::personal_course_schedule::PersonalCourseScheduleApplication;
 use rusaint::application::scholarships::ScholarshipsApplication;
@@ -291,9 +292,9 @@ pub struct CourseInfoRequest {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CurriculumRequest {
-    /// 거슬러 올라갈 정규 학기 수 (기본 4, 최대 8). 현재 학기부터 셉니다
-    pub semesters: Option<u32>,
-    /// 다른 학부를 보려면 단과대·학부·전공. 생략하면 내 소속
+    /// 입학년도 (2016 이후). 생략하면 내 입학년도. 교과과정은 입학년도 기준으로 적용됩니다
+    pub entry_year: Option<u32>,
+    /// 다른 학과를 보려면 단과대학·학과·전공 이름(usaint_course_options 의 이름과 같음). 생략하면 내 소속
     pub collage: Option<String>,
     pub department: Option<String>,
     pub major: Option<String>,
@@ -653,6 +654,27 @@ impl SsuServer {
         to_json(&app.scholarships().await.map_err(usaint::err)?)
     }
 
+    /// 성적이 나온 과목(이수구분별 성적표)과 이번 학기 수강 중인 과목. 과목번호로 대조합니다.
+    async fn taken_courses(&self, u: &Usaint) -> Result<courses::Taken, String> {
+        let mut taken = courses::Taken::default();
+        let mut grades = u.app::<CourseGradesApplication>().await?;
+        let record = grades
+            .grades_by_classification(CourseType::Bachelor)
+            .await
+            .map_err(usaint::err)?;
+        for item in record.grades() {
+            taken.add(item.course_code(), item.course_name());
+        }
+        let (year, semester) = usaint::current_semester();
+        let mut status = u.app::<CourseRegistrationStatusApplication>().await?;
+        if let Ok(lectures) = status.lectures(year, semester).await {
+            for l in lectures {
+                taken.add(&l.code, &l.name);
+            }
+        }
+        Ok(taken)
+    }
+
     /// 내 소속(단과대·학부·전공)으로 전공 검색 조건을 만듭니다.
     async fn my_major(&self, u: &Usaint) -> Result<Kind, String> {
         let info = u.app::<StudentInformationApplication>().await?;
@@ -878,44 +900,79 @@ impl SsuServer {
         )
     }
 
-    /// 학부 교육과정표: 최근 정규 학기들의 u-saint 전공 개설 과목을 과목별로 묶어 이수구분(전기/전필/전선), 학점, 수강대상 학년, 개설 학기를 보여 줍니다.
-    /// 학교가 공식 교육과정표를 기계가 읽을 수 있는 형태로 공개하지 않아 실제 개설 이력으로 만든 것입니다. 개설되지 않은 학기의 과목은 빠지고,
-    /// 정확한 필수 여부는 학과 안내를 따르라고 알려 주세요. taken 은 졸업사정표에 쓰인(이미 들었거나 듣는 중인) 과목입니다.
+    /// 공식 교과과정표(u-saint "입학년도 별 교과과정 조회"): 입학년도·학과·전공 기준으로 학년·학기별 과목, 이수구분(전공기초/전공필수/전공선택),
+    /// 학점·시간, 과목 개요를 돌려줍니다. 교과과정은 입학년도 기준으로 적용되며 개편되면 바뀔 수 있습니다(실시간 반영이 안 될 수 있음).
+    /// taken 은 졸업사정표에 쓰인(이미 들었거나 듣는 중인) 과목입니다. 실제 개설 여부·시간은 usaint_course_search 로 확인하세요.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn usaint_major_curriculum(
         &self,
         Parameters(req): Parameters<CurriculumRequest>,
     ) -> ToolResult {
         let u = self.usaint().await?;
-        let kind = match (&req.collage, &req.department) {
-            (Some(collage), Some(department)) => Kind::Major {
-                collage: collage.clone(),
-                department: department.clone(),
-                major: req.major.clone(),
-            },
-            _ => self.my_major(&u).await?,
+        let (my_year, my_collage, my_department, my_major) = {
+            let info = u.app::<StudentInformationApplication>().await?;
+            let g = info.general().map_err(usaint::err)?;
+            (
+                g.apply_year(),
+                g.collage().to_string(),
+                g.department().to_string(),
+                g.major().map(str::to_string),
+            )
         };
-        let taken = {
-            let mut grad = u.app::<GraduationRequirementsApplication>().await?;
-            courses::taken(&grad.requirements().await.map_err(usaint::err)?)
+        let year = req.entry_year.unwrap_or(my_year);
+        let collage = req.collage.clone().unwrap_or(my_collage);
+        let department = req.department.clone().unwrap_or(my_department);
+        let taken = self.taken_courses(&u).await?;
+        let mut app = u.app::<CurriculumApplication>().await?;
+        // 전공을 따로 고르지 않는 학과도 목록에 전공이 하나 있으면 그것을 골라야 조회됩니다.
+        let major = match req.major.clone().or(my_major) {
+            Some(m) => Some(m),
+            None => {
+                let majors = app
+                    .majors(year, &collage, &department)
+                    .await
+                    .map_err(usaint::err)?;
+                match majors.as_slice() {
+                    [] => None,
+                    [only] => Some(only.clone()),
+                    many => {
+                        return Err(format!(
+                            "{department} 의 전공을 골라 주세요: {}",
+                            many.join(", ")
+                        ));
+                    }
+                }
+            }
         };
-        let mut app = u.app::<CourseScheduleApplication>().await?;
-        let (mut year, mut semester) = usaint::current_semester();
-        let mut terms = Vec::new();
-        for _ in 0..req.semesters.unwrap_or(4).clamp(1, 8) {
-            let label = format!("{year} {semester}");
-            let list = courses::search(&mut app, year, semester, &kind)
-                .await
-                .unwrap_or_default();
-            terms.push((label, list));
-            (year, semester) = courses::previous_regular(year, semester);
-        }
-        let searched: Vec<_> = terms
+        let rows = app
+            .curriculum(year, &collage, &department, major.as_deref())
+            .await
+            .map_err(usaint::err)?;
+        let courses: Vec<_> = rows
             .iter()
-            .map(|(t, l)| json!({"term": t, "courses": l.len()}))
+            .map(|c| {
+                let taken = taken.contains(&c.code, &c.name);
+                json!({
+                    "grade": c.grade,
+                    "semester": c.semester,
+                    "code": c.code,
+                    "name": c.name,
+                    "category": c.category,
+                    "credits": c.credits.trim().parse::<f32>().ok(),
+                    "hours": c.hours.trim().parse::<f32>().ok(),
+                    "taken": taken,
+                    "description": c.description,
+                })
+            })
             .collect();
-        let entries = courses::curriculum(terms, &taken);
-        to_json(&json!({"searched": searched, "total": entries.len(), "courses": entries}))
+        to_json(&json!({
+            "entry_year": year,
+            "collage": collage,
+            "department": department,
+            "major": major,
+            "total": courses.len(),
+            "courses": courses,
+        }))
     }
 
     /// 졸업사정표에서 아직 못 채운 요건과, 그 요건을 채울 수 있는 강의 후보.
