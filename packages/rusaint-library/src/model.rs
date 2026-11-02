@@ -47,12 +47,20 @@ pub struct Seat {
     /// 좌석 번호
     pub code: String,
     pub is_active: bool,
+    /// 사전(날짜 지정) 예약 가능 여부. 지금 바로 배정받는 것과는 무관합니다.
     pub is_reservable: bool,
     pub is_occupied: bool,
     pub seat_charge_state: Option<String>,
     /// 이용 중인 좌석의 남은 시간(분)
     pub remaining_time: Option<i64>,
     pub seat_type: Option<IdName>,
+}
+
+impl Seat {
+    /// 지금 배정받을 수 있는 빈 좌석인지. 실측상 `isReservable`은 모두 false 여도 배정 가능합니다.
+    pub fn is_free(&self) -> bool {
+        self.is_active && !self.is_occupied
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
