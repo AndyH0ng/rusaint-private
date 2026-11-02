@@ -1,0 +1,26 @@
+[package]
+name = "rusaint-library"
+description = "Soongsil University central library (oasis) client"
+version.workspace = true
+keywords.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+
+[dependencies]
+aes = "0.8"
+base64 = "0.23"
+cbc = { version = "0.1", features = ["alloc"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "gzip", "json", "query"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

@@ -1,0 +1,2346 @@
+{
+ "success": true,
+ "code": "success.retrieved",
+ "message": "Retrieved.",
+ "data": {
+  "totalCount": 8,
+  "list": [
+   {
+    "id": 1,
+    "name": "세미나룸1",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 8,
+    "quota": "3 ~ 8",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "active",
+        "selectable": true
+       },
+       {
+        "class": "active"
+       },
+       {
+        "class": "active"
+       },
+       {
+        "class": "active"
+       },
+       {
+        "class": "active"
+       },
+       {
+        "class": "active"
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 2,
+    "name": "세미나룸2",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 4,
+    "quota": "3 ~ 4",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 3,
+    "name": "세미나룸3",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 6,
+    "quota": "3 ~ 6",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 4,
+    "name": "세미나룸4",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 5,
+    "quota": "3 ~ 5",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "name": "세미나룸5",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 6,
+    "quota": "3 ~ 6",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 6,
+    "name": "세미나룸6",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 6,
+    "quota": "3 ~ 6",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 7,
+    "name": "세미나룸7",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 3,
+    "maxQuota": 8,
+    "quota": "3 ~ 8",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": 9,
+    "name": "세미나룸9",
+    "roomType": {
+     "id": 1,
+     "name": "세미나룸1층",
+     "sortOrder": 0
+    },
+    "floor": {
+     "value": 1,
+     "label": "1층"
+    },
+    "minQuota": 4,
+    "maxQuota": 8,
+    "quota": "4 ~ 8",
+    "hopeDate": "2026-11-02",
+    "isChargeable": true,
+    "timeLine": [
+     {
+      "hour": 10,
+      "minutes": [
+       {
+        "class": "disabled",
+        "selectable": true
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       },
+       {
+        "class": "disabled"
+       }
+      ]
+     },
+     {
+      "hour": 11,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 12,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 13,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 14,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 15,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 16,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 17,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 18,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 19,
+      "minutes": [
+       {
+        "class": "reserved",
+        "selectable": true
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       },
+       {
+        "class": "reserved"
+       }
+      ]
+     },
+     {
+      "hour": 20,
+      "minutes": [
+       {
+        "class": "",
+        "selectable": true
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       },
+       {
+        "class": ""
+       }
+      ]
+     },
+     {
+      "hour": 21,
+      "minutes": [
+       {
+        "class": "end"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

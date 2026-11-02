@@ -1,0 +1,336 @@
+{
+ "success": true,
+ "code": "success.retrieved",
+ "message": "Retrieved.",
+ "data": {
+  "id": 1,
+  "name": "세미나룸1",
+  "roomType": {
+   "id": 1,
+   "name": "세미나룸1층",
+   "sortOrder": 0
+  },
+  "floor": {
+   "value": 1,
+   "label": "1층"
+  },
+  "minQuota": 3,
+  "maxQuota": 8,
+  "quota": "3 ~ 8",
+  "branch": {
+   "id": 1,
+   "name": "중앙도서관",
+   "alias": "중앙",
+   "libraryCode": "211044",
+   "sortOrder": 1
+  },
+  "building": null,
+  "description": null,
+  "attention": "<font color=\"red\"><strong>지정한 예약시간에 1층 대출반납데스크에서 인적사항 확인(동반이용자 포함) 및 체크인 처리를 받아야 이용할 수 있으며,\n퇴실 시에도 대출반납데스크에서 체크아웃 처리를 받아야 퇴실 처리됩니다.</strong></font> <br>\n<font color=\"red\"><strong>지정한 예약시간 30분내에 체크인 하지 않으면 예약이 취소됩니다.</strong></font> <br>\n- 예약은 정각기준 1시간 단위로만 가능합니다.<br>\n- 비정상적인 예약은 승인취소됩니다.<br>\n- 예약 만료시간 10분 전, 정돈 및 퇴실바랍니다.<br>\n- 노트북 대여가 필요한 경우, 대출반납데스크에 문의바랍니다.<br>\n- 노트북 대여 시,  반드시 예약자의 주민등록증 및 운전면허증을 제출해야 대여 가능합니다. (학생증·체크카드·신용카드·교통카드로 대체 불가)<br>",
+  "note": "-",
+  "hopeDate": "2026-11-02",
+  "isChargeable": true,
+  "timeLine": [
+   {
+    "hour": 10,
+    "minutes": [
+     {
+      "class": "disabled",
+      "selectable": true
+     },
+     {
+      "class": "disabled"
+     },
+     {
+      "class": "disabled"
+     },
+     {
+      "class": "disabled"
+     },
+     {
+      "class": "disabled"
+     },
+     {
+      "class": "disabled"
+     }
+    ]
+   },
+   {
+    "hour": 11,
+    "minutes": [
+     {
+      "class": "active",
+      "selectable": true
+     },
+     {
+      "class": "active"
+     },
+     {
+      "class": "active"
+     },
+     {
+      "class": "active"
+     },
+     {
+      "class": "active"
+     },
+     {
+      "class": "active"
+     }
+    ]
+   },
+   {
+    "hour": 12,
+    "minutes": [
+     {
+      "class": "",
+      "selectable": true
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     }
+    ]
+   },
+   {
+    "hour": 13,
+    "minutes": [
+     {
+      "class": "",
+      "selectable": true
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     }
+    ]
+   },
+   {
+    "hour": 14,
+    "minutes": [
+     {
+      "class": "",
+      "selectable": true
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     }
+    ]
+   },
+   {
+    "hour": 15,
+    "minutes": [
+     {
+      "class": "",
+      "selectable": true
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     }
+    ]
+   },
+   {
+    "hour": 16,
+    "minutes": [
+     {
+      "class": "",
+      "selectable": true
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     }
+    ]
+   },
+   {
+    "hour": 17,
+    "minutes": [
+     {
+      "class": "reserved",
+      "selectable": true
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     }
+    ]
+   },
+   {
+    "hour": 18,
+    "minutes": [
+     {
+      "class": "reserved",
+      "selectable": true
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     }
+    ]
+   },
+   {
+    "hour": 19,
+    "minutes": [
+     {
+      "class": "reserved",
+      "selectable": true
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     },
+     {
+      "class": "reserved"
+     }
+    ]
+   },
+   {
+    "hour": 20,
+    "minutes": [
+     {
+      "class": "",
+      "selectable": true
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     },
+     {
+      "class": ""
+     }
+    ]
+   },
+   {
+    "hour": 21,
+    "minutes": [
+     {
+      "class": "end"
+     }
+    ]
+   }
+  ],
+  "reservableDates": [
+   "2026-11-02",
+   "2026-11-03",
+   "2026-11-04",
+   "2026-11-05",
+   "2026-11-06",
+   "2026-11-07",
+   "2026-11-09",
+   "2026-11-10",
+   "2026-11-11",
+   "2026-11-12",
+   "2026-11-13",
+   "2026-11-14",
+   "2026-11-16",
+   "2026-11-17",
+   "2026-11-18"
+  ],
+  "reservableMonths": null,
+  "rule": {
+   "id": 1,
+   "timeUnit": "H",
+   "useCompanionRegistration": true,
+   "useOutsiderRegistration": false,
+   "minTime": 60,
+   "maxTime": 180
+  },
+  "equipments": [],
+  "expansionFields": []
+ }
+}

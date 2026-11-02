@@ -1,0 +1,2328 @@
+{
+ "success": true,
+ "code": "success.retrieved",
+ "message": "Retrieved.",
+ "data": {
+  "totalCount": 122,
+  "list": [
+   {
+    "id": 864,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "1",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 204,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 865,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "2",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 866,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "3",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 223,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 867,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "4",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 221,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 868,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "5",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 129,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 869,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "6",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 183,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 870,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "7",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 203,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 871,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "8",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 872,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "9",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 873,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "10",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 874,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "11",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 205,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 875,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "12",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 876,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "13",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 877,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "14",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 878,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "15",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 879,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "16",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 233,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 880,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "17",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 881,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "18",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 231,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 882,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "19",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 883,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "20",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 189,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 884,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "21",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 92,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 885,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "22",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 886,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "23",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 887,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "24",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 888,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "25",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 108,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 889,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "26",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "TEMP_CHARGE",
+    "remainingTime": 223,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 890,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "27",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "TEMP_CHARGE",
+    "remainingTime": 223,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 891,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "28",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 892,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "29",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 893,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "30",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 237,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 894,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "31",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 106,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 895,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "32",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 896,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "33",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 897,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "34",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 898,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "35",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 164,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 899,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "36",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 900,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "37",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 111,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 901,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "38",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 902,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "39",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 903,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "40",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 904,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "41",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 135,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 905,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "42",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 906,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "43",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 183,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 907,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "44",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 239,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 908,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "45",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 110,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 909,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "46",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 206,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 910,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "47",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 911,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "48",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 912,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "49",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 913,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "50",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 214,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 914,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "51",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 8,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 915,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "52",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 916,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "53",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 917,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "54",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 918,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "55",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 211,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 919,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "56",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 86,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 920,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "57",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 189,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 921,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "58",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 922,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "59",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 923,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "60",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 63,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 924,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "B1",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 201,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 925,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "B2",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 210,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3483,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "61",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3484,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "62",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3485,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "63",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3486,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "64",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 136,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3487,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "65",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3488,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "66",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3489,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "67",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3490,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "68",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3491,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "69",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3492,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "70",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3493,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "71",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3494,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "72",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3495,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "73",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3496,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "74",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3497,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "75",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3498,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "76",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3499,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "77",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 135,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3500,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "78",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3501,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "79",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3502,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "80",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3503,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "81",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 164,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3504,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "82",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3505,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "83",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3506,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "84",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3507,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "85",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3508,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "86",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3509,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "87",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3510,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "88",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3511,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "89",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3512,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "90",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3513,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "91",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3514,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "92",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3515,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "93",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3516,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "94",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3517,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "95",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3518,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "96",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3519,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "97",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3520,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "98",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3521,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "99",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3522,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "100",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3523,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "101",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3524,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "102",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3525,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "103",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": true,
+    "seatChargeState": "CHARGE",
+    "remainingTime": 220,
+    "chargeTime": 240,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3526,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "104",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3527,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "105",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3528,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "106",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3529,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "107",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3530,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "108",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3531,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "109",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3532,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "110",
+    "isActive": true,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3533,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "111",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3534,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "112",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3535,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "113",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3536,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "114",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3537,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "115",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3538,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "116",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3539,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "117",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3540,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "118",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3541,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "119",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   },
+   {
+    "id": 3542,
+    "room": {
+     "id": 53,
+     "name": "숭실스퀘어ON(2F)"
+    },
+    "code": "120",
+    "isActive": false,
+    "isReservable": false,
+    "isOccupied": false,
+    "seatChargeState": null,
+    "remainingTime": 0,
+    "chargeTime": 0,
+    "timeLine": null,
+    "seatType": {
+     "id": 2,
+     "name": "일반용"
+    }
+   }
+  ]
+ }
+}
