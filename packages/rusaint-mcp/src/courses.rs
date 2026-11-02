@@ -23,7 +23,11 @@ pub struct Course {
     pub sub_category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field: Option<String>,
-    /// 시간/학점(설계)
+    /// 학점
+    pub credits: Option<f32>,
+    /// 주당 수업 시간 (실습이 있으면 학점보다 많음)
+    pub hours: Option<f32>,
+    /// 원문 "시간/학점(설계)"
     pub hours_credits: String,
     pub enrolled: String,
     pub seats_left: String,
@@ -33,9 +37,23 @@ pub struct Course {
     pub department: String,
 }
 
+/// "4.0/3.0" 이나 "3.0/3.0(1.0)" 을 (시간, 학점) 으로 읽습니다. 괄호는 설계 학점입니다.
+pub fn parse_hours_credits(raw: &str) -> (Option<f32>, Option<f32>) {
+    let mut parts = raw.split('/');
+    let number = |s: Option<&str>| {
+        s.and_then(|s| s.split('(').next())
+            .and_then(|s| s.trim().parse::<f32>().ok())
+    };
+    let hours = number(parts.next());
+    (hours, number(parts.next()))
+}
+
 impl From<Lecture> for Course {
     fn from(l: Lecture) -> Self {
+        let (hours, credits) = parse_hours_credits(&l.time_points);
         Self {
+            credits,
+            hours,
             code: l.code,
             name: l.name,
             division: l.division,
@@ -277,11 +295,13 @@ pub fn major_keyword(department: &str, major: Option<&str>) -> String {
         .to_string()
 }
 
-/// 강의 상세의 전공별 이수구분 중 내 주전공 학점(전기/전필/전선)으로 들어가는 것
+/// 강의 상세의 전공별 이수구분 중 내 주전공 학점(전기/전필/전선)으로 들어가는 것.
+/// 한 칸에 "미디어공학/전선-글로벌미디어" 처럼 트랙명이나 여러 전공이 `/` 로 묶여 있어 조각마다 봅니다.
 pub fn my_major_category<'a>(categories: &'a [String], keyword: &str) -> Option<&'a str> {
     categories
         .iter()
-        .map(String::as_str)
+        .flat_map(|c| c.split('/'))
+        .map(str::trim)
         .find(|c| ["전기", "전필", "전선"].iter().any(|p| c.starts_with(p)) && c.contains(keyword))
 }
 
@@ -354,10 +374,27 @@ mod tests {
         ];
         assert_eq!(
             my_major_category(&categories, "글로벌미디어"),
-            Some("전선-글로벌미디어/컨텐츠공학")
+            Some("전선-글로벌미디어")
+        );
+        let track_first = vec!["미디어공학/전선-글로벌미디어".to_string()];
+        assert_eq!(
+            my_major_category(&track_first, "글로벌미디어"),
+            Some("전선-글로벌미디어")
+        );
+        let combined = vec!["전선-AI융합/전필-AI소프트웨어/전필-소프트".to_string()];
+        assert_eq!(
+            my_major_category(&combined, "AI소프트웨어"),
+            Some("전필-AI소프트웨어")
         );
         assert_eq!(my_major_category(&categories[1..], "글로벌미디어"), None);
         assert_eq!(my_major_category(&categories, "컴퓨터"), None);
+    }
+
+    #[test]
+    fn hours_and_credits() {
+        assert_eq!(parse_hours_credits("4.0/3.0"), (Some(4.0), Some(3.0)));
+        assert_eq!(parse_hours_credits("3.0/3.0(1.0)"), (Some(3.0), Some(3.0)));
+        assert_eq!(parse_hours_credits(""), (None, None));
     }
 
     #[test]

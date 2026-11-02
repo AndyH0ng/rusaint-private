@@ -826,8 +826,10 @@ impl SsuServer {
         let mut results = Vec::new();
         for name in &req.names {
             let name = name.trim();
-            let found =
-                courses::search(&mut app, year, semester, &Kind::Lecture(name.to_string())).await?;
+            // 그 학기에 없는 과목은 u-saint 가 오류로 알려 주므로 빈 결과로 둡니다.
+            let found = courses::search(&mut app, year, semester, &Kind::Lecture(name.to_string()))
+                .await
+                .unwrap_or_default();
             // 같은 이름이 있으면 그것만, 없으면 이름에 검색어가 들어간 것 전부
             let exact: Vec<_> = found.iter().filter(|c| c.name.trim() == name).collect();
             let picked = if exact.is_empty() {
@@ -852,7 +854,8 @@ impl SsuServer {
                     "division": c.division,
                     "professor": c.professor,
                     "schedule": c.schedule,
-                    "hours_credits": c.hours_credits,
+                    "credits": c.credits,
+                    "hours": c.hours,
                     "enrolled": c.enrolled,
                     "seats_left": c.seats_left,
                     "target": c.target,
@@ -966,7 +969,7 @@ impl SsuServer {
                         .filter(|o| o.name == c.name)
                         .map(|o| json!({"code": o.code, "division": o.division, "professor": o.professor, "schedule": o.schedule, "seats_left": o.seats_left}))
                         .collect();
-                    json!({"name": c.name, "category": c.category, "department": c.department, "hours_credits": c.hours_credits, "target": c.target, "sections": sections})
+                    json!({"name": c.name, "category": c.category, "department": c.department, "credits": c.credits, "hours": c.hours, "target": c.target, "sections": sections})
                 })
                 .collect()
         };
