@@ -5,6 +5,7 @@ use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{ServerHandler, schemars, tool, tool_handler, tool_router};
 use rusaint_library::{LibraryClient, RoomReservation};
+use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -14,10 +15,11 @@ use crate::automation::{Automation, MAX_RENEW_HOURS};
 use crate::keychain;
 use crate::pending::{Action, Pending};
 
-const INSTRUCTIONS: &str = "숭실대학교 학식 메뉴와 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
+const INSTRUCTIONS: &str = "숭실대학교 학식 메뉴, LMS(강의·과제·자료), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
 - 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
-- 도서관 로그인이 계정 정보 오류로 한 번 거부되면 이 서버는 재시작 전까지 다시 시도하지 않습니다(계정 잠금 방지). 재시도를 반복하지 말고, 터미널에서 Keychain 항목을 고친 뒤 앱을 재시작하라고 안내하세요.";
+- 도서관·통합(SSO) 로그인이 계정 정보 오류로 한 번 거부되면 이 서버는 재시작 전까지 다시 시도하지 않습니다(계정 잠금 방지). 재시도를 반복하지 말고, 터미널에서 Keychain 항목(rusaint-library / rusaint-sso)을 고친 뒤 앱을 재시작하라고 안내하세요.
+- 성적·과제·학적 같은 개인 정보는 사용자가 요청한 범위에서만 보여 주고 다른 곳에 옮기지 마세요.";
 
 type ToolResult = Result<String, String>;
 
@@ -130,10 +132,30 @@ pub struct AutoRenewRequest {
     pub hours: Option<u64>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct TermRequest {
+    /// 학기 id (lms_courses 의 terms[].id). 생략하면 현재 정규 학기
+    pub term_id: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CourseRequest {
+    /// 강의 id (lms_courses 의 courses[].id)
+    pub course_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DownloadRequest {
+    pub course_id: u64,
+    /// lms_materials 의 material.content_id
+    pub content_id: String,
+}
+
 #[derive(Clone)]
 pub struct SsuServer {
     meal: Arc<MealClient>,
     library: Arc<OnceCell<Arc<LibraryClient>>>,
+    lms: Arc<OnceCell<Arc<LmsClient>>>,
     pending: Arc<Pending>,
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
@@ -144,6 +166,7 @@ impl SsuServer {
         Ok(Self {
             meal: Arc::new(MealClient::new().map_err(|e| e.to_string())?),
             library: Arc::new(OnceCell::new()),
+            lms: Arc::new(OnceCell::new()),
             pending: Arc::new(Pending::new()),
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
@@ -161,6 +184,38 @@ impl SsuServer {
             })
             .await
             .cloned()
+    }
+
+    /// LMS 클라이언트는 처음 필요할 때 Keychain 의 통합 계정으로 만듭니다.
+    async fn lms(&self) -> Result<Arc<LmsClient>, String> {
+        self.lms
+            .get_or_try_init(|| async {
+                let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
+                LmsClient::new(id, password)
+                    .map(Arc::new)
+                    .map_err(|e| e.to_string())
+            })
+            .await
+            .cloned()
+    }
+
+    /// term_id 가 없으면 현재 정규 학기를 고릅니다.
+    async fn lms_term(
+        &self,
+        client: &LmsClient,
+        term_id: Option<u64>,
+    ) -> Result<(Term, Vec<Term>), String> {
+        let terms = client.terms().await.map_err(|e| e.to_string())?;
+        let term = match term_id {
+            Some(id) => terms.iter().find(|t| t.id == id),
+            None => terms
+                .iter()
+                .find(|t| t.default && t.name.contains("학기"))
+                .or_else(|| terms.iter().find(|t| t.default)),
+        }
+        .cloned()
+        .ok_or("학기를 찾을 수 없습니다")?;
+        Ok((term, terms))
     }
 
     async fn prepared(&self, action: Action, summary: String) -> ToolResult {
@@ -204,6 +259,125 @@ impl SsuServer {
     async fn get_dorm_meals(&self, Parameters(req): Parameters<DateRequest>) -> ToolResult {
         let date = parse_date(req.date.as_deref())?;
         to_json(&self.meal.dorm_week(date).await.map_err(|e| e.to_string())?)
+    }
+
+    /// LMS 학기 목록과 그 학기의 수강 강의 (교수, 수강 상태).
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_courses(&self, Parameters(req): Parameters<TermRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        let (term, terms) = self.lms_term(&client, req.term_id).await?;
+        let courses = client.courses(term.id).await.map_err(|e| e.to_string())?;
+        to_json(&json!({
+            "term": term,
+            "terms": terms.iter().map(|t| json!({ "id": t.id, "name": t.name, "current": t.default })).collect::<Vec<_>>(),
+            "courses": courses,
+        }))
+    }
+
+    /// LMS 할 일: 강의별 미제출 과제·퀴즈·미시청 영상 수와 마감이 있는 항목. due_date 는 UTC 이니 한국 시간(+9)으로 바꿔 알려 주세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_todos(&self, Parameters(req): Parameters<TermRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        let (term, _) = self.lms_term(&client, req.term_id).await?;
+        let (courses, todos) = tokio::join!(client.courses(term.id), client.todos(term.id));
+        let courses = courses.map_err(|e| e.to_string())?;
+        let todos = todos.map_err(|e| e.to_string())?;
+        let out: Vec<_> = todos
+            .iter()
+            .map(|t| {
+                let name = courses.iter().find(|c| c.id == t.course_id).map(|c| c.name.as_str());
+                let pending: serde_json::Map<String, serde_json::Value> = t
+                    .activities
+                    .iter()
+                    .filter(|(k, v)| !k.contains("total_announcements") && !k.contains("total_resources") && v.as_u64().is_some_and(|n| n > 0))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+                json!({ "course_id": t.course_id, "course": name, "pending_counts": pending, "items": t.todo_list })
+            })
+            .collect();
+        to_json(&json!({ "term": term.name, "courses": out }))
+    }
+
+    /// 강의의 주차별 항목(자료·영상·과제·퀴즈)과 완료 여부. 자료는 material.content_id 로 내려받을 수 있습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_materials(&self, Parameters(req): Parameters<CourseRequest>) -> ToolResult {
+        let client = self.lms().await?;
+        let modules = client
+            .modules(req.course_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let weeks: Vec<_> = modules
+            .iter()
+            .map(|m| {
+                let items: Vec<_> = m
+                    .module_items
+                    .iter()
+                    .map(|i| {
+                        json!({
+                            "title": i.title,
+                            "type": i.content_type,
+                            "completed": i.completed,
+                            "due_at": i.due_at(),
+                            "material": i.material(),
+                        })
+                    })
+                    .collect();
+                json!({ "week": m.week_position, "title": m.title, "items": items })
+            })
+            .collect();
+        to_json(&weeks)
+    }
+
+    /// LMS 자료 파일을 ~/Downloads/ssu-lms/<강의명>/ (또는 RUSAINT_DOWNLOAD_DIR) 에 내려받습니다. 같은 이름의 파일이 있으면 덮어쓰지 않습니다.
+    /// lms_materials 의 size_bytes 는 실제 원본 파일보다 훨씬 작게 나올 수 있습니다(실측 0.7MB → 22.7MB). 영상(movie)은 특히 클 수 있으니 미리 알려 주세요.
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        open_world_hint = true
+    ))]
+    async fn lms_download_material(
+        &self,
+        Parameters(req): Parameters<DownloadRequest>,
+    ) -> ToolResult {
+        let client = self.lms().await?;
+        let (term, _) = self.lms_term(&client, None).await?;
+        let course = client
+            .courses(term.id)
+            .await
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|c| c.id == req.course_id)
+            .map(|c| c.name)
+            .unwrap_or_else(|| req.course_id.to_string());
+        let modules = client
+            .modules(req.course_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let (item, material) = modules
+            .iter()
+            .flat_map(|m| &m.module_items)
+            .find_map(|i| {
+                i.material()
+                    .filter(|m| m.content_id == req.content_id)
+                    .map(|m| (i, m))
+            })
+            .ok_or("이 강의에서 해당 자료를 찾을 수 없습니다")?;
+        let file_name = material
+            .file_name
+            .clone()
+            .unwrap_or_else(|| format!("{}.{}", item.title, material.kind));
+        let dir = download_root()?.join(safe_name(&course));
+        let dest = dir.join(safe_name(&file_name));
+        if dest.exists() {
+            return to_json(
+                &json!({ "saved": false, "reason": "이미 같은 이름의 파일이 있습니다", "path": dest }),
+            );
+        }
+        let bytes = client
+            .download(&material.content_id, &dest)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&json!({ "saved": true, "path": dest, "bytes": bytes }))
     }
 
     /// 열람실별 전체·사용 중·빈 좌석 수. unableMessage 가 있으면 지금 이용할 수 없는 열람실입니다.
@@ -465,6 +639,37 @@ impl SsuServer {
     }
 }
 
+/// 내려받은 LMS 자료를 두는 곳. `RUSAINT_DOWNLOAD_DIR` 이 있으면 그 경로를 씁니다.
+fn download_root() -> Result<std::path::PathBuf, String> {
+    if let Some(dir) = std::env::var_os("RUSAINT_DOWNLOAD_DIR").filter(|d| !d.is_empty()) {
+        return Ok(std::path::PathBuf::from(dir));
+    }
+    let home = std::env::var_os("HOME").ok_or("HOME 이 설정되어 있지 않습니다")?;
+    Ok(std::path::PathBuf::from(home)
+        .join("Downloads")
+        .join("ssu-lms"))
+}
+
+/// 경로 구분자·제어 문자를 지우고 숨김 파일·상위 경로가 되지 않게 합니다.
+fn safe_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| {
+            if c == '/' || c == '\\' || c == ':' || c.is_control() {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
+    let cleaned = cleaned.trim().trim_start_matches('.').to_string();
+    if cleaned.is_empty() {
+        "untitled".into()
+    } else {
+        cleaned
+    }
+}
+
 /// 연장 전 도착 확인. 지원하지 않는 방식이면 이유와 함께 거절합니다.
 async fn ensure_arrival(
     client: &LibraryClient,
@@ -493,5 +698,19 @@ impl ServerHandler for SsuServer {
                 env!("CARGO_PKG_VERSION"),
             ))
             .with_instructions(INSTRUCTIONS)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::safe_name;
+
+    #[test]
+    fn safe_name_blocks_paths() {
+        assert_eq!(safe_name("../../etc/passwd"), "_.._etc_passwd");
+        assert_eq!(safe_name("HCI (2150469601)"), "HCI (2150469601)");
+        assert_eq!(safe_name("a/b:c.pdf"), "a_b_c.pdf");
+        assert_eq!(safe_name(".."), "untitled");
+        assert_eq!(safe_name(".hidden"), "hidden");
     }
 }

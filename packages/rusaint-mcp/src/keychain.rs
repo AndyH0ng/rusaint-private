@@ -4,6 +4,8 @@ use tokio::process::Command;
 
 /// 도서관 계정 항목 이름
 pub const LIBRARY_SERVICE: &str = "rusaint-library";
+/// 통합(SSO) 계정 항목 이름. LMS·u-saint 가 함께 씁니다.
+pub const SSO_SERVICE: &str = "rusaint-sso";
 
 /// `service` 항목의 (계정, 비밀번호)를 돌려줍니다. 값은 로그나 오류 메시지에 넣지 않습니다.
 pub async fn credentials(service: &str) -> Result<(String, String), String> {
