@@ -19,6 +19,7 @@ use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
 use rusaint_path::{Eligibility, PathClient, ProgramQuery};
+use rusaint_regulation::RegulationClient;
 use rusaint_sso::SsoCredentials;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -233,13 +234,26 @@ pub struct CalendarRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RegulationRequest {
+    /// 학칙, 학칙시행세칙, 학사관리내규, 연계융합전공, 교육과정규정. 생략하면 학칙시행세칙(졸업·수강·성적·전공 인정 등 학사 세부 규정)
+    pub regulation: Option<String>,
+    /// 조문 제목·본문에 모두 들어 있어야 할 단어들(공백 구분). 예: "졸업 학점", "타 학과 인정", "복수전공"
+    pub keyword: Option<String>,
+    /// 조 번호. 예: 제20조, 제87조의3
+    pub article: Option<String>,
+    /// 별표 번호나 이름 일부. 예: 별표1, 별표6. 주면 그 별표 PDF 의 글자를 돌려줍니다
+    pub attachment: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CourseSearchRequest {
     /// 연도. 생략하면 현재 학기
     pub year: Option<u32>,
     /// 1학기, 2학기, 여름학기, 겨울학기. 생략하면 현재 학기
     pub semester: Option<String>,
     /// lecture(과목명 검색), professor(교수명 검색), major(전공), required_elective(교양필수),
-    /// optional_elective(교양선택), chapel(채플), connected_major(연계전공), united_major(융합전공), education(교직)
+    /// optional_elective(교양선택), chapel(채플), connected_major(연계전공), united_major(융합전공), education(교직),
+    /// recognized_other_major(내 전공에서 전공 학점으로 인정하는 타전공 과목. collage·department 생략하면 내 소속)
     pub kind: String,
     /// lecture/professor 는 검색어, required_elective·chapel 은 과목명, optional_elective 는 교양 분야,
     /// connected_major·united_major 는 전공명. 이름은 usaint_course_options 의 값과 정확히 같아야 합니다
@@ -317,6 +331,7 @@ pub struct DownloadRequest {
 pub struct SsuServer {
     meal: Arc<MealClient>,
     calendar: Arc<CalendarClient>,
+    regulation: Arc<RegulationClient>,
     library: Arc<OnceCell<Arc<LibraryClient>>>,
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
@@ -334,6 +349,7 @@ impl SsuServer {
         Ok(Self {
             meal: Arc::new(MealClient::new().map_err(|e| e.to_string())?),
             calendar: Arc::new(CalendarClient::new().map_err(|e| e.to_string())?),
+            regulation: Arc::new(RegulationClient::new().map_err(|e| e.to_string())?),
             library: Arc::new(OnceCell::new()),
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
@@ -656,6 +672,25 @@ impl SsuServer {
             "connected_major" => Kind::ConnectedMajor(keyword()?),
             "united_major" => Kind::UnitedMajor(keyword()?),
             "education" => Kind::Education,
+            "recognized_other_major" => match (&req.collage, &req.department) {
+                (Some(collage), Some(department)) => Kind::RecognizedOtherMajor {
+                    collage: collage.clone(),
+                    department: department.clone(),
+                    major: req.major.clone(),
+                },
+                _ => match self.my_major(&u).await? {
+                    Kind::Major {
+                        collage,
+                        department,
+                        major,
+                    } => Kind::RecognizedOtherMajor {
+                        collage,
+                        department,
+                        major,
+                    },
+                    other => other,
+                },
+            },
             "major" => match (&req.collage, &req.department) {
                 (Some(collage), Some(department)) => Kind::Major {
                     collage: collage.clone(),
@@ -724,6 +759,8 @@ impl SsuServer {
     /// 졸업사정표에서 아직 못 채운 요건과, 그 요건을 채울 수 있는 강의 후보.
     /// 이미 들은 과목(졸업사정표에 쓰인 과목)은 빼고, 전공은 내 소속 학부 강의에서 이수구분(전기/전필/전선)으로 고릅니다.
     /// 추천 학기 시간표가 아직 없으면 1년 전 같은 학기 시간표로 대신하며 offered_basis 에 표시합니다. 이때는 실제 개설 여부가 다를 수 있다고 알려 주세요.
+    /// recognized_other_major 는 내 전공 학점으로 인정되는 타 학과 과목인데, 소속 학과 개설 전공을 최소 학점 이상 들어야 하고(학칙시행세칙 별표6,
+    /// school_regulation attachment=별표6) 복수전공 중이면 인정되지 않습니다(제20조).
     /// 기독교 과목 후보는 과목명으로 추정한 것이고, 졸업논문·졸업확정신고 같은 요건은 학과 안내를 따르도록 안내하세요.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn usaint_graduation_plan(
@@ -760,25 +797,52 @@ impl SsuServer {
         }
         // 시간이 정해진 정규 강의를 앞에, 현장실습·Co-op 처럼 시간이 없는 과목을 뒤에 둡니다.
         majors.sort_by_key(|c| c.schedule.trim().is_empty());
-        let pick = |category: &str| -> Vec<_> {
+        // 같은 과목의 분반을 하나로 묶고, 이미 들은 과목은 뺍니다.
+        let group = |list: &[courses::Course], keep: &dyn Fn(&courses::Course) -> bool| -> Vec<_> {
             let mut seen = std::collections::BTreeSet::new();
-            majors
-                .iter()
-                .filter(|c| courses::matches_major_kind(category, &c.category))
+            list.iter()
+                .filter(|c| keep(c))
                 .filter(|c| !courses::is_taken(&taken, &c.name))
                 .filter(|c| seen.insert(c.name.clone()))
                 .map(|c| {
-                    let sections: Vec<_> = majors
+                    let sections: Vec<_> = list
                         .iter()
                         .filter(|o| o.name == c.name)
                         .map(|o| json!({"code": o.code, "division": o.division, "professor": o.professor, "schedule": o.schedule, "seats_left": o.seats_left}))
                         .collect();
-                    json!({"name": c.name, "category": c.category, "hours_credits": c.hours_credits, "target": c.target, "sections": sections})
+                    json!({"name": c.name, "category": c.category, "department": c.department, "hours_credits": c.hours_credits, "target": c.target, "sections": sections})
                 })
                 .collect()
         };
+        let pick = |category: &str| {
+            group(&majors, &|c| {
+                courses::matches_major_kind(category, &c.category)
+            })
+        };
         let major_basic = need("전공기초").then(|| pick("전공기초"));
         let major = need("전공").then(|| pick("전공"));
+        let recognized = if need("전공") {
+            let Kind::Major {
+                collage,
+                department,
+                major,
+            } = &kind
+            else {
+                unreachable!("my_major 는 전공 검색 조건을 돌려줍니다")
+            };
+            let other = Kind::RecognizedOtherMajor {
+                collage: collage.clone(),
+                department: department.clone(),
+                major: major.clone(),
+            };
+            let mut list = courses::search(&mut app, basis.0, basis.1, &other)
+                .await
+                .unwrap_or_default();
+            list.sort_by_key(|c| c.schedule.trim().is_empty());
+            Some(group(&list, &|_| true))
+        } else {
+            None
+        };
 
         let required_names = if need("교양필수") || need("졸업필수 요건") {
             app.required_electives(basis.0, basis.1)
@@ -845,11 +909,101 @@ impl SsuServer {
             "candidates": {
                 "major_basic": major_basic,
                 "major": major,
+                "recognized_other_major": recognized,
                 "required_elective_areas": need("교양필수").then_some(&required_areas),
                 "christian_course_guess": (!christian.is_empty()).then_some(&christian),
                 "optional_elective_areas": optional_areas,
             },
         }))
+    }
+
+    /// 숭실대학교 규정집(rule.ssu.ac.kr)의 학사 규정. 졸업 요건, 이수구분별 학점, 타 학과 과목 전공 인정(학칙시행세칙 제20조), 복수·부전공, 수강·성적 규정을 찾을 때 씁니다.
+    /// keyword·article 이 없으면 조문 제목 목록과 별표 목록을 돌려줍니다. 별표 표(학과별 학점 등)는 attachment 로 PDF 글자를 받는데,
+    /// 표가 줄글로 풀려 병합된 칸의 숫자 순서가 섞일 수 있으니 중요한 숫자는 preview_url 원문을 확인하라고 안내하세요.
+    /// 학생 본인의 졸업 기준 학점은 usaint_graduation 이 가장 정확합니다. 규정은 개정될 수 있으니 조문과 함께 url 을 알려 주세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn school_regulation(
+        &self,
+        Parameters(req): Parameters<RegulationRequest>,
+    ) -> ToolResult {
+        let wanted = req.regulation.as_deref().unwrap_or("학칙시행세칙").trim();
+        let Some(&(id, _)) = rusaint_regulation::ACADEMIC
+            .iter()
+            .find(|(_, name)| *name == wanted)
+        else {
+            let names: Vec<_> = rusaint_regulation::ACADEMIC
+                .iter()
+                .map(|(_, n)| *n)
+                .collect();
+            return Err(format!("알 수 없는 규정: {wanted} ({})", names.join(", ")));
+        };
+        let regulation = self
+            .regulation
+            .regulation(id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let base = json!({"regulation": regulation.name, "url": regulation.url});
+
+        if let Some(wanted) = req.attachment.as_deref().filter(|a| !a.trim().is_empty()) {
+            // "별표1" 이 "별표10" 에 걸리지 않도록 대괄호 안 번호를 먼저 비교합니다.
+            let key = wanted.trim().replace(' ', "");
+            let attachment = regulation
+                .attachments
+                .iter()
+                .find(|a| a.name.replace(' ', "").starts_with(&format!("[{key}]")))
+                .or_else(|| {
+                    regulation
+                        .attachments
+                        .iter()
+                        .find(|a| a.name.contains(wanted.trim()))
+                })
+                .ok_or_else(|| format!("별표를 찾지 못했습니다: {wanted}"))?;
+            let text = self
+                .regulation
+                .attachment_text(attachment)
+                .await
+                .map_err(|e| e.to_string())?;
+            return to_json(&json!({
+                "regulation": regulation.name,
+                "attachment": attachment.name,
+                "preview_url": attachment.preview_url,
+                "text": text,
+            }));
+        }
+
+        if let Some(number) = req.article.as_deref().filter(|a| !a.trim().is_empty()) {
+            let number = number.replace(' ', "");
+            let found: Vec<_> = regulation
+                .articles
+                .iter()
+                .filter(|a| a.number().replace(' ', "") == number)
+                .collect();
+            return to_json(&json!({"regulation": base, "articles": found}));
+        }
+
+        if let Some(words) = req.keyword.as_deref().filter(|k| !k.trim().is_empty()) {
+            let words: Vec<&str> = words.split_whitespace().collect();
+            let found: Vec<_> = regulation
+                .articles
+                .iter()
+                .filter(|a| {
+                    let hay = format!("{} {}", a.title, a.body.join(" "));
+                    words.iter().all(|w| hay.contains(w))
+                })
+                .collect();
+            let total = found.len();
+            let found: Vec<_> = found.into_iter().take(15).collect();
+            return to_json(&json!({"regulation": base, "total": total, "articles": found}));
+        }
+
+        let titles: Vec<_> = regulation
+            .articles
+            .iter()
+            .map(|a| json!({"title": a.title, "chapter": a.chapter}))
+            .collect();
+        to_json(
+            &json!({"regulation": base, "articles": titles, "attachments": regulation.attachments}),
+        )
     }
 
     /// 숭실대학교 학사일정(수강신청, 개강, 시험, 휴학·복학 신청, 성적 공개 등). 로그인 없이 학교 홈페이지에서 가져옵니다.

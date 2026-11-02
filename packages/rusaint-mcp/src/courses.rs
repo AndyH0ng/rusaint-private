@@ -68,6 +68,12 @@ pub enum Kind {
     ConnectedMajor(String),
     UnitedMajor(String),
     Education,
+    /// 내 전공에서 인정하는 타전공 과목
+    RecognizedOtherMajor {
+        collage: String,
+        department: String,
+        major: Option<String>,
+    },
 }
 
 impl Kind {
@@ -86,6 +92,11 @@ impl Kind {
             Kind::ConnectedMajor(m) => LectureCategory::connected_major(m),
             Kind::UnitedMajor(m) => LectureCategory::united_major(m),
             Kind::Education => LectureCategory::education(),
+            Kind::RecognizedOtherMajor {
+                collage,
+                department,
+                major,
+            } => LectureCategory::recognized_other_major(collage, department, major.as_deref()),
         }
     }
 }
