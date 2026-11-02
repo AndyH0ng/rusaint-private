@@ -19,6 +19,7 @@ const BASE_URL: &str = "https://path.ssu.ac.kr";
 const LOGIN_PROC_PATH: &str = "/comm/login/user/loginProc.do";
 const LIST_PATH: &str = "/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmList.do";
 const DETAIL_PATH: &str = "/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmInfo.do";
+const MILEAGE_PATH: &str = "/ptfol/imng/milgMngt/findMyKumMilgList.do";
 const USER_AGENT: &str = concat!(
     "rusaint-path/",
     env!("CARGO_PKG_VERSION"),
@@ -173,6 +174,13 @@ impl PathClient {
     /// 첫 화면의 나의 기본정보 (학적 상태, 학과, 학년)
     pub async fn profile(&self) -> Result<Profile, PathError> {
         Ok(parse_profile(&self.page("/index.do", &[]).await?))
+    }
+
+    /// 비교과 마일리지: 첫 화면의 올해 누적과, 마일리지 조회 화면의 전체 합계·내역
+    pub async fn mileage(&self) -> Result<Mileage, PathError> {
+        let index = self.page("/index.do", &[]).await?;
+        let list = self.page(MILEAGE_PATH, &[]).await?;
+        Ok(parse_mileage(&list, &index))
     }
 
     /// 비교과 프로그램 목록
@@ -411,6 +419,94 @@ pub fn eligibility(program: &Program, profile: &Profile) -> Eligibility {
     }
 }
 
+/// 비교과 마일리지
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct Mileage {
+    /// 첫 화면의 "2026학년도 취득 마일리지" 처럼 올해 쌓은 점수. 장학금 순위는 이 연도 누적으로 매깁니다.
+    pub this_year: Option<YearMileage>,
+    pub remaining: Option<u32>,
+    pub total_earned: Option<u32>,
+    pub total_used: Option<u32>,
+    pub history: Vec<MileageEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct YearMileage {
+    pub year: u32,
+    pub earned: Option<u32>,
+    pub used: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct MileageEntry {
+    /// 2026.10.13
+    pub date: String,
+    /// 비교과 프로그램, 그룹비교과 …
+    pub kind: String,
+    pub detail: String,
+    /// 획득 / 사용
+    pub direction: String,
+    pub points: Option<u32>,
+}
+
+/// `list` 는 마일리지 조회 화면, `index` 는 첫 화면입니다.
+pub fn parse_mileage(list: &str, index: &str) -> Mileage {
+    let doc = Html::parse_document(list);
+    let summary: Vec<(String, String)> = doc
+        .select(&sel("div.mileage_box"))
+        .next()
+        .map(dl_pairs)
+        .unwrap_or_default();
+    let get = |key: &str| {
+        summary
+            .iter()
+            .find(|(k, _)| k == key)
+            .and_then(|(_, v)| number(v))
+    };
+    let history = doc
+        .select(&sel("div.table_wrap.pc_view table.t_list tbody tr"))
+        .filter_map(|row| {
+            let cell = |th: &str| first_text(row, &format!(r#"td[data-th="{th}"]"#));
+            Some(MileageEntry {
+                date: cell("취득일자")?,
+                kind: cell("항목").unwrap_or_default(),
+                detail: cell("상세내역").unwrap_or_default(),
+                direction: cell("구분").unwrap_or_default(),
+                points: cell("마일리지").as_deref().and_then(number),
+            })
+        })
+        .collect();
+
+    let index = Html::parse_document(index);
+    let mut this_year: Option<YearMileage> = None;
+    for (key, value) in index
+        .select(&sel("div.box"))
+        .flat_map(dl_pairs)
+        .filter(|(k, _)| k.contains("학년도") && k.contains("마일리지"))
+    {
+        let Some(year) = key.get(..4).and_then(number) else {
+            continue;
+        };
+        let entry = this_year.get_or_insert(YearMileage {
+            year,
+            earned: None,
+            used: None,
+        });
+        if key.contains("취득") {
+            entry.earned = number(&value);
+        } else if key.contains("사용") {
+            entry.used = number(&value);
+        }
+    }
+    Mileage {
+        this_year,
+        remaining: get("잔여 마일리지"),
+        total_earned: get("총 획득 마일리지"),
+        total_used: get("총 사용한 마일리지"),
+        history,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -470,5 +566,32 @@ mod tests {
         let pairs = parse_detail(html);
         assert!(pairs.contains(&("신청대상".into(), "숭실대학교".into())));
         assert!(pairs.contains(&("학년:".into(), "전체".into())));
+    }
+
+    #[test]
+    fn mileage_summary_history_and_this_year() {
+        let list = r#"<div class="mileage_box"><ul><li><dl><dt class="lg">잔여 마일리지</dt><dd><span class="col01">700</span><b>점</b></dd></dl></li><li><dl><dt class="lg">총 획득 마일리지</dt><dd><span class="col02">1,000</span><b>점</b></dd></dl></li><li><dl><dt class="lg">총 사용한 마일리지</dt><dd><span class="col03">300</span><b>점</b></dd></dl></li></ul></div>
+<div class="table_wrap pc_view"><table class="t_list"><tbody>
+<tr><td data-th="번호">2</td><td data-th="취득일자">2026.03.02</td><td data-th="항목">비교과 프로그램</td><td data-th="상세내역" class="td_btn t_left">예시 특강</td><td data-th="구분"><span class="col01">획득</span></td><td data-th="마일리지"><span class="col02">40</span></td></tr>
+<tr><td data-th="번호">1</td><td data-th="취득일자">2025.12.30</td><td data-th="항목">장학금</td><td data-th="상세내역" class="td_btn t_left">마일리지 장학금</td><td data-th="구분"><span class="col03">사용</span></td><td data-th="마일리지"><span class="col02">300</span></td></tr>
+</tbody></table></div>
+<div class="table_wrap mob_view"><table class="t_list"><tbody><tr><td data-th="취득일자">중복</td></tr></tbody></table></div>"#;
+        let index = r#"<div class="box"><dl><dt>2026학년도 전체 마일리지</dt><dd><strong>40점</strong></dd></dl><dl><dt>2026학년도 취득 마일리지</dt><dd><strong>40점</strong></dd></dl><dl><dt>2026학년도 사용 마일리지</dt><dd><strong>0점</strong></dd></dl></div>"#;
+        let m = parse_mileage(list, index);
+        assert_eq!(
+            (m.remaining, m.total_earned, m.total_used),
+            (Some(700), Some(1000), Some(300))
+        );
+        assert_eq!(m.history.len(), 2);
+        assert_eq!(m.history[0].detail, "예시 특강");
+        assert_eq!(m.history[1].direction, "사용");
+        assert_eq!(
+            m.this_year,
+            Some(YearMileage {
+                year: 2026,
+                earned: Some(40),
+                used: Some(0)
+            })
+        );
     }
 }

@@ -1128,6 +1128,21 @@ impl SsuServer {
         }))
     }
 
+    /// SSU-PATH 비교과 마일리지: 올해 누적(this_year), 전체 획득·사용·잔여, 항목별 내역.
+    /// 마일리지 장학금(2026학년도부터, SSU-PATH 공지 기준): 그 해 1~12월 누적 마일리지 순위로 신청 없이 연 1회 지급하며, 매 학년도 0점에서 시작합니다.
+    /// 1등 100만원(1명), 2~11등 70만원, 12~41등 50만원, 42~71등 30만원, 72~121등 20만원, 122~221등 15만원(총 221명).
+    /// 동점이면 비교과 참여 수가 많은 쪽이 우선이고 구간을 넘는 동점자가 있으면 금액이 일부 낮아질 수 있습니다. 0학점 등록자는 제외되고 u-saint 계좌 등록이 필요합니다.
+    /// 내 순위는 SSU-PATH 가 공개하지 않으므로 추정하지 마세요. 금액·기준은 바뀔 수 있으니 notice_url 공지를 함께 알려 주세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn path_mileage(&self) -> ToolResult {
+        let client = self.path().await?;
+        let mileage = client.mileage().await.map_err(|e| e.to_string())?;
+        to_json(&json!({
+            "mileage": mileage,
+            "notice_url": "https://path.ssu.ac.kr/ptfol/comm/board/7d5781d33124f58f831fe856c5c86e53/view.do?dataSeq=1001629",
+        }))
+    }
+
     /// SSU-PATH 비교과 프로그램 상세: 신청 대상 상세(학적·학년·학위), 선정 방법, 정원/대기자, 주요 내용, 일정
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn path_program_detail(
