@@ -1,0 +1,20 @@
+[package]
+name = "rusaint-calendar"
+description = "Soongsil University academic calendar client"
+version.workspace = true
+keywords.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "gzip", "query"] }
+scraper = "0.26"
+serde = { version = "1", features = ["derive"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

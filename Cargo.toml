@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "packages/rusaint",
+  "packages/rusaint-calendar",
   "packages/rusaint-cli",
   "packages/rusaint-ffi",
   "packages/rusaint-library",
