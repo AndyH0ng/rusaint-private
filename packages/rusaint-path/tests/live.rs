@@ -10,10 +10,10 @@ use rusaint_path::{PathClient, ProgramQuery, eligibility};
 #[tokio::test]
 #[ignore]
 async fn list_programs() {
-    let client = PathClient::new(
+    let client = PathClient::new(rusaint_sso::SsoCredentials::new(
         std::env::var("SSO_ID").unwrap_or_default(),
         std::env::var("SSO_PASSWORD").unwrap_or_default(),
-    );
+    ));
     let me = client.profile().await.unwrap();
     println!("profile: {me:?}");
     let query = ProgramQuery {

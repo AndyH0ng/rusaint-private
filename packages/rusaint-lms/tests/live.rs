@@ -10,10 +10,10 @@ use rusaint_lms::LmsClient;
 #[tokio::test]
 #[ignore]
 async fn login_and_read() {
-    let client = LmsClient::new(
+    let client = LmsClient::new(rusaint_sso::SsoCredentials::new(
         std::env::var("SSO_ID").unwrap_or_default(),
         std::env::var("SSO_PASSWORD").unwrap_or_default(),
-    )
+    ))
     .unwrap();
     client.login().await.unwrap();
     println!("login ok");
@@ -82,10 +82,10 @@ async fn login_and_read() {
 #[tokio::test]
 #[ignore]
 async fn announcements_and_boards() {
-    let client = LmsClient::new(
+    let client = LmsClient::new(rusaint_sso::SsoCredentials::new(
         std::env::var("SSO_ID").unwrap_or_default(),
         std::env::var("SSO_PASSWORD").unwrap_or_default(),
-    )
+    ))
     .unwrap();
     let course = 49096; // HCI
     let announcements = client.announcements(course).await.unwrap();

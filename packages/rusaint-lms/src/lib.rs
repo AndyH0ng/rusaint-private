@@ -1,7 +1,7 @@
 //! 숭실대학교 LMS(canvas.ssu.ac.kr, LearningX) 클라이언트입니다.
 //!
 //! 로그인 흐름 (2026-11 브라우저에서 실측):
-//! 1. SmartID 로그인으로 `sToken` 발급 ([`rusaint::obtain_ssu_sso_token`])
+//! 1. SmartID 로그인으로 `sToken` 발급 ([`rusaint_sso::SsoCredentials::token`])
 //! 2. `lms.ssu.ac.kr/xn-sso/gw-cb.php?sToken=&sIdno=` → 302 `lms.ssu.ac.kr/login/callback?result=…`
 //! 3. `canvas.ssu.ac.kr/learningx/login/from_cc?result=…` 가 `xn_api_token`(JWT, 2시간) 쿠키를 발급
 //! 4. LearningX API 는 `Authorization: Bearer <xn_api_token>` 이 있어야 응답합니다 (쿠키만으로는 401)
@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 use reqwest::cookie::{CookieStore, Jar};
 use reqwest::header::{AUTHORIZATION, LOCATION, REFERER};
 use reqwest::redirect::Policy;
+use rusaint_sso::{SsoCredentials, SsoError};
 use serde::de::DeserializeOwned;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
@@ -64,33 +65,27 @@ struct Session {
 
 /// LMS 클라이언트. 처음 API 를 호출할 때 로그인하고, 토큰이 만료되면 다시 로그인합니다.
 pub struct LmsClient {
-    student_id: String,
-    password: String,
+    sso: Arc<SsoCredentials>,
     session: Mutex<Option<Session>>,
-    rejected: Mutex<Option<String>>,
     api: reqwest::Client,
 }
 
 impl LmsClient {
-    pub fn new(
-        student_id: impl Into<String>,
-        password: impl Into<String>,
-    ) -> Result<Self, LmsError> {
+    /// `sso` 는 다른 서비스와 공유해도 됩니다. 로그인 시도와 거부 상태가 함께 관리됩니다.
+    pub fn new(sso: Arc<SsoCredentials>) -> Result<Self, LmsError> {
         let api = reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .timeout(REQUEST_TIMEOUT)
             .build()?;
         Ok(Self {
-            student_id: student_id.into(),
-            password: password.into(),
+            sso,
             session: Mutex::new(None),
-            rejected: Mutex::new(None),
             api,
         })
     }
 
     pub fn student_id(&self) -> &str {
-        &self.student_id
+        self.sso.student_id()
     }
 
     /// 로그인해서 새 `xn_api_token` 을 받습니다.
@@ -100,31 +95,15 @@ impl LmsClient {
     }
 
     async fn open_session(&self) -> Result<Session, LmsError> {
-        if self.student_id.trim().is_empty() || self.password.is_empty() {
-            return Err(LmsError::CredentialUnusable(
-                "학번 또는 비밀번호가 비어 있습니다".into(),
-            ));
-        }
-        if let Some(reason) = self.rejected.lock().await.clone() {
-            return Err(LmsError::CredentialUnusable(reason));
-        }
-
-        let s_token = match rusaint::obtain_ssu_sso_token(&self.student_id, &self.password).await {
-            Ok(token) => token,
-            Err(rusaint::SsuSsoError::CantFindToken(message)) => {
-                // SmartID 가 경고창으로 거부한 경우(비밀번호 오류 등). 반복하면 계정이 잠길 수 있습니다.
-                *self.rejected.lock().await = Some(message.clone());
-                return Err(LmsError::CredentialUnusable(message));
-            }
-            Err(e) => return Err(LmsError::Login(format!("SmartID: {e}"))),
-        };
+        let s_token = self.sso.token().await.map_err(|e| match e {
+            SsoError::CredentialUnusable(reason) => LmsError::CredentialUnusable(reason),
+            SsoError::Failed(reason) => LmsError::Login(reason),
+        })?;
+        let student_id = self.sso.student_id();
 
         let jar = Arc::new(Jar::default());
         let gateway = Url::parse(LMS_GATEWAY_URL).expect("static url");
-        for (name, value) in [
-            ("sToken", s_token.as_str()),
-            ("sIdno", self.student_id.as_str()),
-        ] {
+        for (name, value) in [("sToken", s_token.as_str()), ("sIdno", student_id)] {
             jar.add_cookie_str(
                 &format!("{name}={value}; Domain=.ssu.ac.kr; Path=/"),
                 &gateway,
@@ -140,10 +119,7 @@ impl LmsClient {
         // 2. 게이트웨이 → callback?result=…
         let response = http
             .get(gateway.clone())
-            .query(&[
-                ("sToken", s_token.as_str()),
-                ("sIdno", self.student_id.as_str()),
-            ])
+            .query(&[("sToken", s_token.as_str()), ("sIdno", student_id)])
             .send()
             .await?;
         let callback = response
@@ -309,7 +285,7 @@ impl LmsClient {
 
     /// 수강 학기 목록. `default` 가 true 인 것이 현재 학기입니다.
     pub async fn terms(&self) -> Result<Vec<Term>, LmsError> {
-        let path = format!("/learningx/api/v1/users/{}/terms", self.student_id);
+        let path = format!("/learningx/api/v1/users/{}/terms", self.student_id());
         let page: TermPage = self
             .get(
                 &path,
@@ -677,7 +653,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_credentials_are_never_sent() {
-        let client = LmsClient::new("20240000", "").unwrap();
+        let client = LmsClient::new(SsoCredentials::new("20240000", "")).unwrap();
         assert!(matches!(
             client.login().await,
             Err(LmsError::CredentialUnusable(_))

@@ -1,28 +1,25 @@
-//! u-saint(rusaint) 세션 관리. 통합 계정이 한 번 거부되면 다시 시도하지 않습니다.
+//! u-saint(rusaint) 세션 관리. 통합 계정은 LMS·SSU-PATH 와 공유하는 [`SsoCredentials`] 를 씁니다.
 
 use std::sync::Arc;
 
 use chrono::{Datelike, Local};
 use rusaint::client::{USaintApplication, USaintClientBuilder};
 use rusaint::model::SemesterType;
-use rusaint::{RusaintError, SsuSsoError, USaintSession};
+use rusaint::{RusaintError, USaintSession};
+use rusaint_sso::SsoCredentials;
 use serde_json::{Map, Value};
 use tokio::sync::Mutex;
 
 pub struct Usaint {
-    id: String,
-    password: String,
+    sso: Arc<SsoCredentials>,
     session: Mutex<Option<Arc<USaintSession>>>,
-    rejected: Mutex<Option<String>>,
 }
 
 impl Usaint {
-    pub fn new(id: String, password: String) -> Self {
+    pub fn new(sso: Arc<SsoCredentials>) -> Self {
         Self {
-            id,
-            password,
+            sso,
             session: Mutex::new(None),
-            rejected: Mutex::new(None),
         }
     }
 
@@ -31,26 +28,9 @@ impl Usaint {
         if let Some(s) = session.as_ref().filter(|_| !force) {
             return Ok(s.clone());
         }
-        if self.id.trim().is_empty() || self.password.is_empty() {
-            return Err("통합 계정 학번 또는 비밀번호가 비어 있습니다".into());
-        }
-        if let Some(reason) = self.rejected.lock().await.clone() {
-            return Err(format!(
-                "통합 로그인 계정 정보를 사용할 수 없습니다: {reason}"
-            ));
-        }
-        let token = match rusaint::obtain_ssu_sso_token(&self.id, &self.password).await {
-            Ok(token) => token,
-            Err(SsuSsoError::CantFindToken(message)) => {
-                *self.rejected.lock().await = Some(message.clone());
-                return Err(format!(
-                    "통합 로그인 계정 정보를 사용할 수 없습니다: {message}"
-                ));
-            }
-            Err(e) => return Err(format!("SmartID 로그인 실패: {e}")),
-        };
+        let token = self.sso.token().await.map_err(|e| e.to_string())?;
         let fresh = Arc::new(
-            USaintSession::with_token(&self.id, &token)
+            USaintSession::with_token(self.sso.student_id(), &token)
                 .await
                 .map_err(|e| format!("u-saint 세션 생성 실패: {e}"))?,
         );

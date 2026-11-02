@@ -1,0 +1,18 @@
+[package]
+name = "rusaint-sso"
+description = "Shared Soongsil University SmartID credentials with a rejection latch"
+version.workspace = true
+keywords.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+readme.workspace = true
+
+[dependencies]
+rusaint = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

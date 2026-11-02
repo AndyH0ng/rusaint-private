@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::cookie::Jar;
+use rusaint_sso::{SsoCredentials, SsoError};
 use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
 use tokio::sync::Mutex;
@@ -93,46 +94,29 @@ pub struct Profile {
 }
 
 pub struct PathClient {
-    student_id: String,
-    password: String,
+    sso: Arc<SsoCredentials>,
     session: Mutex<Option<reqwest::Client>>,
-    rejected: Mutex<Option<String>>,
 }
 
 impl PathClient {
-    pub fn new(student_id: impl Into<String>, password: impl Into<String>) -> Self {
+    /// `sso` 는 다른 서비스와 공유해도 됩니다. 로그인 시도와 거부 상태가 함께 관리됩니다.
+    pub fn new(sso: Arc<SsoCredentials>) -> Self {
         Self {
-            student_id: student_id.into(),
-            password: password.into(),
+            sso,
             session: Mutex::new(None),
-            rejected: Mutex::new(None),
         }
     }
 
     async fn open_session(&self) -> Result<reqwest::Client, PathError> {
-        if self.student_id.trim().is_empty() || self.password.is_empty() {
-            return Err(PathError::CredentialUnusable(
-                "학번 또는 비밀번호가 비어 있습니다".into(),
-            ));
-        }
-        if let Some(reason) = self.rejected.lock().await.clone() {
-            return Err(PathError::CredentialUnusable(reason));
-        }
-        let s_token = match rusaint::obtain_ssu_sso_token(&self.student_id, &self.password).await {
-            Ok(token) => token,
-            Err(rusaint::SsuSsoError::CantFindToken(message)) => {
-                *self.rejected.lock().await = Some(message.clone());
-                return Err(PathError::CredentialUnusable(message));
-            }
-            Err(e) => return Err(PathError::Login(format!("SmartID: {e}"))),
-        };
+        let s_token = self.sso.token().await.map_err(|e| match e {
+            SsoError::CredentialUnusable(reason) => PathError::CredentialUnusable(reason),
+            SsoError::Failed(reason) => PathError::Login(reason),
+        })?;
+        let student_id = self.sso.student_id();
 
         let base = Url::parse(BASE_URL).expect("static url");
         let jar = Arc::new(Jar::default());
-        for (name, value) in [
-            ("sToken", s_token.as_str()),
-            ("sIdno", self.student_id.as_str()),
-        ] {
+        for (name, value) in [("sToken", s_token.as_str()), ("sIdno", student_id)] {
             jar.add_cookie_str(&format!("{name}={value}; Domain=.ssu.ac.kr; Path=/"), &base);
         }
         let http = reqwest::Client::builder()
@@ -145,7 +129,7 @@ impl PathClient {
             .query(&[
                 ("rtnUrl", ""),
                 ("sToken", s_token.as_str()),
-                ("sIdno", self.student_id.as_str()),
+                ("sIdno", student_id),
             ])
             .header(reqwest::header::REFERER, "https://smartid.ssu.ac.kr/")
             .send()

@@ -17,6 +17,7 @@ use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
 use rusaint_path::{Eligibility, PathClient, ProgramQuery};
+use rusaint_sso::SsoCredentials;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::OnceCell;
@@ -240,6 +241,8 @@ pub struct SsuServer {
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
     path: Arc<OnceCell<Arc<PathClient>>>,
+    /// u-saint·LMS·SSU-PATH 가 함께 쓰는 통합 계정. 거부되면 세 서비스 모두 다시 시도하지 않습니다.
+    sso: Arc<OnceCell<Arc<SsoCredentials>>>,
     pending: Arc<Pending>,
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
@@ -253,6 +256,7 @@ impl SsuServer {
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
             path: Arc::new(OnceCell::new()),
+            sso: Arc::new(OnceCell::new()),
             pending: Arc::new(Pending::new()),
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
@@ -272,14 +276,22 @@ impl SsuServer {
             .cloned()
     }
 
-    /// LMS 클라이언트는 처음 필요할 때 Keychain 의 통합 계정으로 만듭니다.
-    async fn lms(&self) -> Result<Arc<LmsClient>, String> {
-        self.lms
+    /// 통합 계정은 처음 필요할 때 Keychain 에서 한 번 읽어 세 서비스가 공유합니다.
+    async fn sso(&self) -> Result<Arc<SsoCredentials>, String> {
+        self.sso
             .get_or_try_init(|| async {
                 let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
-                LmsClient::new(id, password)
-                    .map(Arc::new)
-                    .map_err(|e| e.to_string())
+                Ok::<_, String>(SsoCredentials::new(id, password))
+            })
+            .await
+            .cloned()
+    }
+
+    async fn lms(&self) -> Result<Arc<LmsClient>, String> {
+        let sso = self.sso().await?;
+        self.lms
+            .get_or_try_init(|| async {
+                LmsClient::new(sso).map(Arc::new).map_err(|e| e.to_string())
             })
             .await
             .cloned()
@@ -287,22 +299,18 @@ impl SsuServer {
 
     /// u-saint 세션도 처음 필요할 때 Keychain 의 통합 계정으로 만듭니다.
     async fn usaint(&self) -> Result<Arc<Usaint>, String> {
+        let sso = self.sso().await?;
         self.usaint
-            .get_or_try_init(|| async {
-                let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
-                Ok::<_, String>(Arc::new(Usaint::new(id, password)))
-            })
+            .get_or_try_init(|| async { Ok::<_, String>(Arc::new(Usaint::new(sso))) })
             .await
             .cloned()
     }
 
     /// SSU-PATH 도 통합 계정을 씁니다. 세션은 30분이면 끝나며, 만료되면 클라이언트가 한 번 다시 로그인합니다.
     async fn path(&self) -> Result<Arc<PathClient>, String> {
+        let sso = self.sso().await?;
         self.path
-            .get_or_try_init(|| async {
-                let (id, password) = keychain::credentials(keychain::SSO_SERVICE).await?;
-                Ok::<_, String>(Arc::new(PathClient::new(id, password)))
-            })
+            .get_or_try_init(|| async { Ok::<_, String>(Arc::new(PathClient::new(sso))) })
             .await
             .cloned()
     }
