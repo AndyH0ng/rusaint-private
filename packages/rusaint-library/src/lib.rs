@@ -279,6 +279,19 @@ impl LibraryClient {
         )
     }
 
+    /// 스터디룸 예약 상세. 목록에는 없는 `isRenewable` 등이 들어 있습니다.
+    pub async fn my_room(&self, charge_id: u64) -> Result<Option<Charge>, LibraryError> {
+        Self::data(
+            self.call(
+                Method::GET,
+                &format!("/api/room-charges/{charge_id}"),
+                &[],
+                None,
+            )
+            .await?,
+        )
+    }
+
     /// 날짜별 스터디룸 목록과 빈 시간대
     pub async fn study_rooms(&self, date: NaiveDate) -> Result<Vec<StudyRoom>, LibraryError> {
         let query = [
