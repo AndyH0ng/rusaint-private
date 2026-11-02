@@ -14,12 +14,10 @@ use crate::automation::{Automation, MAX_RENEW_HOURS};
 use crate::keychain;
 use crate::pending::{Action, Pending};
 
-const INSTRUCTIONS: &str = "숭실대학교 학식 메뉴와 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다룹니다.
-- 날짜는 YYYY-MM-DD, 시각은 HH:MM 입니다. 생략하면 오늘입니다.
-- 학식 status 가 closed 여도 미래 날짜라면 메뉴가 아직 등록되지 않았을 수 있습니다.
-- 도서관 쓰기 작업은 prepare_* 로 내용을 만든 뒤 사용자에게 보여 주고, 사용자가 동의하면 confirm_library_action 으로 실행합니다. 사용자의 명시적 동의 없이 confirm 하지 마세요.
-- library_auto_renew 는 켜는 것 자체가 실행 동의이므로 사용자가 직접 요청했을 때만 켭니다.
-- PC 좌석 배정은 임시배정으로 시작하며 20분 안에 도서관 게이트를 통과하지 않으면 노쇼가 됩니다. 사용자가 곧 도서관에 갈 때만 배정하세요.";
+const INSTRUCTIONS: &str = "숭실대학교 학식 메뉴와 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
+- 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
+- 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
+- 도서관 로그인이 계정 정보 오류로 한 번 거부되면 이 서버는 재시작 전까지 다시 시도하지 않습니다(계정 잠금 방지). 재시도를 반복하지 말고, 터미널에서 Keychain 항목을 고친 뒤 앱을 재시작하라고 안내하세요.";
 
 type ToolResult = Result<String, String>;
 
@@ -179,6 +177,9 @@ impl SsuServer {
 #[tool_router]
 impl SsuServer {
     /// 교내 식당(soongguri.com) 하루 메뉴. 알레르기·원산지 정보는 제외됩니다.
+    /// lines 는 화면 그대로의 텍스트입니다: 가격 "- 5.0" 은 5,000원, "★ 메뉴" 줄과 "메뉴, 메뉴- 6.0" 줄은 같은 메뉴입니다.
+    /// slot(중식1 등)은 내용과 다를 수 있으니 section 과 본문으로 판단하세요. status=closed 는 미래 날짜면 미등록일 수 있습니다.
+    /// 메뉴 이름은 영문 설명을 참고해 바꾸지 말고 원문 그대로 쓰세요. 식당을 지정하지 않으면 6곳을 차례로 조회해 몇 초 걸립니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn get_meals(&self, Parameters(req): Parameters<MealsRequest>) -> ToolResult {
         let date = parse_date(req.date.as_deref())?;
@@ -198,21 +199,22 @@ impl SsuServer {
         to_json(&menus)
     }
 
-    /// 기숙사 식당 주간 식단 (date 가 속한 월~일)
+    /// 기숙사 식당 주간 식단 (date 가 속한 월~일). 아직 올라오지 않은 주는 빈 목록이고, 끼니에 "미운영"이 들어갈 수 있습니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn get_dorm_meals(&self, Parameters(req): Parameters<DateRequest>) -> ToolResult {
         let date = parse_date(req.date.as_deref())?;
         to_json(&self.meal.dorm_week(date).await.map_err(|e| e.to_string())?)
     }
 
-    /// 열람실별 전체·사용 중·빈 좌석 수
+    /// 열람실별 전체·사용 중·빈 좌석 수. unableMessage 가 있으면 지금 이용할 수 없는 열람실입니다.
+    /// 빈자리를 기다리려고 이 도구나 library_seats 를 반복 호출하지 마세요(학교 서버 부담, 노쇼 위험).
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn library_seat_rooms(&self) -> ToolResult {
         let client = self.library().await?;
         to_json(&client.seat_rooms().await.map_err(|e| e.to_string())?)
     }
 
-    /// 열람실 하나의 빈 좌석 목록 (배정 가능한 좌석만)
+    /// 열람실 하나의 빈 좌석 목록. 배정에는 여기의 seat_id 를 씁니다. 반복 호출로 빈자리를 기다리지 마세요.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn library_seats(&self, Parameters(req): Parameters<SeatsRequest>) -> ToolResult {
         let client = self.library().await?;
@@ -225,7 +227,8 @@ impl SsuServer {
         to_json(&json!({ "total": seats.len(), "free_count": free.len(), "free": free }))
     }
 
-    /// 내 대출 자료, 열람실 좌석 이용·예약, 스터디룸 예약
+    /// 내 대출 자료, 열람실 좌석 이용·예약, 스터디룸 예약. seats[].id·rooms[].id 가 반납·연장에 쓰는 charge_id 입니다.
+    /// state 가 임시배정(TEMP_CHARGE)이면 아직 입실 전이며, renewableDate 이후(종료 30분 전)부터 renewalLimit 회까지 연장할 수 있습니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn library_my_status(&self) -> ToolResult {
         let client = self.library().await?;
@@ -238,7 +241,8 @@ impl SsuServer {
         }))
     }
 
-    /// 날짜별 스터디룸(세미나룸) 빈 시간대, 시작 가능 시각, 인원·이용 규칙
+    /// 날짜별 스터디룸(세미나룸) 빈 시간대. free_ranges 는 비어 있는 시간, 예약 시작은 start_times(정각)만 가능합니다.
+    /// 인원(min_quota~max_quota)은 본인 포함이며, 이용 시간 규칙은 prepare 단계에서 확인합니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn library_study_rooms(&self, Parameters(req): Parameters<DateRequest>) -> ToolResult {
         let date = parse_date(req.date.as_deref())?;
@@ -247,6 +251,7 @@ impl SsuServer {
     }
 
     /// 스터디룸 동반 이용자 확인. 결과의 id 를 prepare_library_room_reservation 에 넣습니다.
+    /// 이름·학번은 제3자 개인정보이므로 사용자가 직접 알려 준 값만 쓰고, 추측하거나 다른 용도로 쓰지 마세요.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
     async fn library_check_companion(
         &self,
@@ -434,8 +439,9 @@ impl SsuServer {
         to_json(&json!({ "done": summary, "result": data }))
     }
 
-    /// 내 좌석·스터디룸이 연장 가능해지면 자동으로 연장합니다 (60초 간격, 최대 12시간).
-    /// 도착 확인이 GPS·비콘·RF 태그 방식이면 연장하지 않고 기록만 남깁니다.
+    /// 내 좌석·스터디룸이 연장 가능해지면 자동으로 연장합니다 (60초 간격, 최대 12시간). 사용자가 직접 요청했을 때만 켜세요.
+    /// 이 MCP 서버(앱/세션)가 켜져 있는 동안만 동작하며, 앱을 닫으면 멈춘다는 점을 사용자에게 알리세요.
+    /// 연장은 도서관 게이트 출입 기록(GATE)이 있어야 통과하므로 도서관 밖에서는 실패 기록만 남습니다. 결과는 library_auto_renew_status 로 확인합니다.
     #[tool(annotations(destructive_hint = true, open_world_hint = true))]
     async fn library_auto_renew(
         &self,
