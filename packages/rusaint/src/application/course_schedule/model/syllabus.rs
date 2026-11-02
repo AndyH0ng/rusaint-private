@@ -41,6 +41,10 @@ pub struct LectureSyllabus {
     pub designation: String,
     /// 결석처리
     pub absence_policy: String,
+    /// 성적 입력 방식 (예: "Pass/Fail 입력")
+    pub grading_scale: String,
+    /// 평가 방식 (예: "상대평가", "절대평가")
+    pub evaluation_type: String,
     /// 성적평가 항목
     pub grading_items: Vec<SyllabusGradingItem>,
     /// 학습목표
@@ -134,6 +138,8 @@ impl LectureSyllabus {
         let target_students = get_string_field(plan, "BOOK_TARGET");
         let designation = get_string_field(plan, "DESIGNATION");
         let absence_policy = get_string_field(plan, "SMABSENT");
+        let grading_scale = get_string_field(plan, "SCALE_TEXT");
+        let evaluation_type = get_string_field(plan, "CLSBORDT");
 
         // ET_APP — grading breakdown
         let grading_items: Vec<SyllabusGradingItem> = find_dataset(datasets, "ET_APP")
@@ -187,6 +193,8 @@ impl LectureSyllabus {
             target_students,
             designation,
             absence_policy,
+            grading_scale,
+            evaluation_type,
             grading_items,
             learning_objectives,
             weekly_schedule,
