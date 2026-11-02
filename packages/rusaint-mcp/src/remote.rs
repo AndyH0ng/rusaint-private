@@ -29,6 +29,22 @@ use url::Url;
 use crate::server::SsuServer;
 
 const CALLBACK: &str = "https://claude.ai/api/mcp/auth_callback";
+
+/// Claude 웹/앱의 고정 콜백, 또는 Claude Code·Codex 같은 CLI 가 띄우는 루프백 콜백(RFC 8252)만 허용합니다.
+/// 루프백은 로그인한 사람 자신의 컴퓨터로만 돌아가므로 남이 등록해도 코드를 가로챌 수 없습니다.
+fn redirect_allowed(uri: &str) -> bool {
+    if uri == CALLBACK {
+        return true;
+    }
+    let Ok(url) = Url::parse(uri) else {
+        return false;
+    };
+    url.scheme() == "http"
+        && matches!(url.host_str(), Some("localhost" | "127.0.0.1"))
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.fragment().is_none()
+}
 const TTL: Duration = Duration::from_secs(300);
 /// 접속 토큰은 짧게 두고, 갱신 토큰으로 Claude 가 알아서 새로 받습니다.
 const TOKEN_TTL: Duration = Duration::from_secs(3600);
@@ -68,7 +84,8 @@ struct App {
 }
 #[derive(Default)]
 struct Data {
-    clients: HashMap<String, Expiring<()>>,
+    /// 클라이언트별로 등록한 콜백
+    clients: HashMap<String, Expiring<Vec<String>>>,
     logins: HashMap<String, Expiring<Authorization>>,
     codes: HashMap<String, Expiring<(Authorization, SsuServer)>>,
     tokens: HashMap<String, Expiring<SsuServer>>,
@@ -158,14 +175,16 @@ fn router(app: App) -> Router {
         .route("/login", post(login))
         .route("/token", post(token))
         .route("/mcp", any(mcp))
-        .layer(axum::middleware::map_response(|mut response: Response| async move {
-            let headers = response.headers_mut();
-            headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
-            headers.insert("referrer-policy", "no-referrer".parse().unwrap());
-            headers.insert("x-content-type-options", "nosniff".parse().unwrap());
-            headers.insert("content-security-policy", "default-src 'none'; form-action 'self' https://claude.ai; frame-ancestors 'none'; base-uri 'none'".parse().unwrap());
-            response
-        }))
+        .layer(axum::middleware::map_response(
+            |mut response: Response| async move {
+                let headers = response.headers_mut();
+                headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+                headers.insert("referrer-policy", "no-referrer".parse().unwrap());
+                headers.insert("x-content-type-options", "nosniff".parse().unwrap());
+                headers.insert("content-security-policy", crate::page::CSP.parse().unwrap());
+                response
+            },
+        ))
         // 쿼리에는 code·state 가 들어 있어 경로와 상태 코드만 남깁니다.
         .layer(axum::middleware::from_fn(
             |request: Request, next: axum::middleware::Next| async move {
@@ -198,13 +217,19 @@ async fn register(
     State(app): State<App>,
     Json(req): Json<Registration>,
 ) -> Result<impl IntoResponse, HttpError> {
-    // 지원 클라이언트의 고정 콜백만 허용하여 공개 등록을 통한 피싱/리디렉션을 차단합니다.
-    if req.redirect_uris != [CALLBACK]
+    // 허용한 콜백만 받아 공개 등록을 통한 피싱/리디렉션을 차단합니다.
+    if req.redirect_uris.is_empty()
+        || req.redirect_uris.len() > 4
+        || !req.redirect_uris.iter().all(|uri| redirect_allowed(uri))
         || req
             .token_endpoint_auth_method
             .as_deref()
             .is_some_and(|v| v != "none")
     {
+        eprintln!(
+            "등록 거부: redirect_uris={:?} token_endpoint_auth_method={:?}",
+            req.redirect_uris, req.token_endpoint_auth_method
+        );
         return Err(invalid());
     }
     let mut data = app.data.lock().await;
@@ -218,12 +243,12 @@ async fn register(
     let id = secret();
     data.clients.insert(
         id.clone(),
-        Expiring::new((), Duration::from_secs(30 * 86400)),
+        Expiring::new(req.redirect_uris.clone(), Duration::from_secs(30 * 86400)),
     );
     Ok((
         StatusCode::CREATED,
         Json(
-            json!({"client_id": id, "redirect_uris": [CALLBACK], "token_endpoint_auth_method": "none", "grant_types": ["authorization_code", "refresh_token"], "response_types": ["code"]}),
+            json!({"client_id": id, "redirect_uris": req.redirect_uris, "token_endpoint_auth_method": "none", "grant_types": ["authorization_code", "refresh_token"], "response_types": ["code"]}),
         ),
     ))
 }
@@ -245,8 +270,10 @@ async fn authorize(
 ) -> Result<Html<String>, HttpError> {
     let mut data = app.data.lock().await;
     data.prune();
-    if !data.clients.contains_key(&req.client_id)
-        || req.redirect_uri != CALLBACK
+    if !data
+        .clients
+        .get(&req.client_id)
+        .is_some_and(|c| c.value.contains(&req.redirect_uri))
         || req.response_type != "code"
         || req.code_challenge_method != "S256"
         || URL_SAFE_NO_PAD
@@ -266,9 +293,7 @@ async fn authorize(
     }
     let ticket = secret();
     data.logins.insert(ticket.clone(), Expiring::new(req, TTL));
-    Ok(Html(format!(
-        r#"<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>숭실대학교 MCP 로그인</title><h1>Claude에 숭실대학교 계정 연결</h1><p>비공식 rusaint 서버입니다. 연결하면 Claude가 요청에 따라 성적·학적·LMS·도서관 정보를 조회하고 도서관 예약을 실행할 수 있습니다. 계정은 이 서버의 메모리에 연결 만료까지 보관됩니다.</p><form method="post" action="/login"><input type="hidden" name="ticket" value="{ticket}"><p><label>통합 계정 학번 <input name="id" autocomplete="username" required maxlength="128"></label></p><p><label>통합 계정 비밀번호 <input type="password" name="password" autocomplete="current-password" required maxlength="1024"></label></p><fieldset><legend>도서관 계정 (선택)</legend><p><label>아이디 <input name="library_id" maxlength="128"></label></p><p><label>비밀번호 <input type="password" name="library_password" maxlength="1024"></label></p></fieldset><button type="submit">로그인하고 Claude 연결 허용</button></form></html>"#
-    )))
+    Ok(Html(crate::page::login(&ticket)))
 }
 
 #[derive(Deserialize)]
@@ -309,7 +334,10 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
     if !app.allowed.contains(&id) {
         return Ok((
             StatusCode::FORBIDDEN,
-            Html("이 서버에서 허용되지 않은 학번입니다."),
+            Html(crate::page::message(
+                "허용되지 않은 학번",
+                "이 서버에 로그인할 수 있도록 등록된 학번이 아닙니다. 학교 서버에는 아무것도 보내지 않았습니다.",
+            )),
         )
             .into_response());
     }
@@ -330,7 +358,7 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
     };
     let server = match tokio::time::timeout(Duration::from_secs(60), verified).await {
         Ok(Ok(server)) => server,
-        _ => return Ok((StatusCode::UNAUTHORIZED, Html("로그인에 실패했습니다. 계정 정보를 확인한 뒤 Claude에서 커넥터 연결을 다시 시작하세요. 반복 시도는 계정 잠금을 일으킬 수 있습니다.")).into_response()),
+        _ => return Ok((StatusCode::UNAUTHORIZED, Html(crate::page::message("로그인 실패", "계정 정보를 확인한 뒤 앱에서 연결을 처음부터 다시 시작하세요. 여러 번 틀리면 학교 계정이 잠길 수 있습니다."))).into_response()),
     };
     let code = secret();
     let mut redirect = Url::parse(&auth.redirect_uri).map_err(|_| invalid())?;
@@ -707,6 +735,28 @@ mod tests {
         assert!(login(State(app), form()).await.is_err());
     }
 
+    #[test]
+    fn only_claude_and_loopback_callbacks_are_allowed() {
+        for ok in [
+            CALLBACK,
+            "http://localhost:53682/callback",
+            "http://127.0.0.1:1455/callback",
+        ] {
+            assert!(redirect_allowed(ok), "{ok}");
+        }
+        for bad in [
+            "https://attacker.example/callback",
+            "http://localhost.attacker.example/callback",
+            "https://localhost/callback",
+            "http://[::1]:8080/cb",
+            "http://user@127.0.0.1/callback",
+            "http://127.0.0.1/cb#frag",
+            "https://claude.ai/api/mcp/auth_callback/x",
+        ] {
+            assert!(!redirect_allowed(bad), "{bad}");
+        }
+    }
+
     #[tokio::test]
     async fn rejects_unregistered_clients_redirects_and_plain_pkce() {
         let app = app();
@@ -715,7 +765,7 @@ mod tests {
             .lock()
             .await
             .clients
-            .insert("client".into(), Expiring::new((), TTL));
+            .insert("client".into(), Expiring::new(vec![CALLBACK.into()], TTL));
         let mut req = auth();
         req.redirect_uri = "https://attacker.example/callback".into();
         assert!(authorize(State(app.clone()), Query(req)).await.is_err());

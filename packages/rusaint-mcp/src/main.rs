@@ -6,6 +6,7 @@
 mod automation;
 mod keychain;
 mod login;
+mod page;
 mod pending;
 mod remote;
 mod server;
