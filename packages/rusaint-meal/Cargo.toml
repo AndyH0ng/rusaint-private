@@ -10,6 +10,7 @@ edition.workspace = true
 readme.workspace = true
 
 [dependencies]
+aes = "0.8"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 ego-tree = "0.11"
 encoding_rs = "0.8"

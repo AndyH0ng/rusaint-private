@@ -4,6 +4,7 @@
 //! 화면에 보이는 줄 단위 텍스트로 정리해서 돌려줍니다. 알레르기·원산지 정보는 제외합니다.
 
 mod campus;
+mod challenge;
 mod dorm;
 mod hours;
 mod text;
@@ -180,12 +181,21 @@ pub enum MealError {
     Request(#[from] reqwest::Error),
     #[error("서버가 HTTP {0} 을(를) 반환했습니다")]
     Status(u16),
+    #[error(
+        "식당 사이트(soongguri.com)의 자동접속 확인을 통과하지 못해 메뉴를 가져오지 못했습니다. 미운영이 아닙니다"
+    )]
+    BotCheck,
 }
+
+/// 확인 쿠키를 다시 쓰는 기간 (페이지가 하루짜리 쿠키를 줍니다)
+const CHALLENGE_COOKIE_TTL: Duration = Duration::from_secs(23 * 3600);
 
 /// 식당 메뉴 클라이언트. 학교 서버 부담을 줄이기 위해 요청 사이에 최소 1초 간격을 둡니다.
 pub struct MealClient {
     http: reqwest::Client,
     last_request: Mutex<Option<Instant>>,
+    /// soongguri.com 확인 쿠키 (`CUPID` 값, 받은 시각)
+    challenge_cookie: Mutex<Option<(String, Instant)>>,
 }
 
 impl MealClient {
@@ -197,6 +207,7 @@ impl MealClient {
         Ok(Self {
             http,
             last_request: Mutex::new(None),
+            challenge_cookie: Mutex::new(None),
         })
     }
 
@@ -280,8 +291,50 @@ impl MealClient {
         self.request(self.http.get(url).query(query)).await
     }
 
-    /// 요청 사이에 최소 간격을 두고 보냅니다.
+    /// 요청을 보내고, soongguri.com 확인 페이지가 오면 쿠키를 계산해 한 번 더 보냅니다.
     async fn request(&self, request: reqwest::RequestBuilder) -> Result<Vec<u8>, MealError> {
+        let request = request.build()?;
+        let soongguri = request
+            .url()
+            .host_str()
+            .is_some_and(|h| h == "soongguri.com" || h.ends_with(".soongguri.com"));
+        let retry = request.try_clone();
+        let body = self.send(request, soongguri).await?;
+        if !soongguri {
+            return Ok(body);
+        }
+        let Some(cookie) = challenge::solve(&body) else {
+            return Ok(body);
+        };
+        *self.challenge_cookie.lock().await = Some((cookie, Instant::now()));
+        let Some(retry) = retry else {
+            return Err(MealError::BotCheck);
+        };
+        let body = self.send(retry, true).await?;
+        if challenge::is_challenge(&body) {
+            *self.challenge_cookie.lock().await = None;
+            return Err(MealError::BotCheck);
+        }
+        Ok(body)
+    }
+
+    /// 요청 사이에 최소 간격을 두고 보냅니다.
+    async fn send(
+        &self,
+        mut request: reqwest::Request,
+        with_cookie: bool,
+    ) -> Result<Vec<u8>, MealError> {
+        if with_cookie {
+            let cookie = self.challenge_cookie.lock().await.clone();
+            if let Some((value, _)) = cookie.filter(|(_, at)| at.elapsed() < CHALLENGE_COOKIE_TTL)
+            {
+                if let Ok(header) = format!("{}={value}", challenge::COOKIE_NAME).parse() {
+                    request
+                        .headers_mut()
+                        .insert(reqwest::header::COOKIE, header);
+                }
+            }
+        }
         let mut last = self.last_request.lock().await;
         if let Some(at) = *last {
             let elapsed = at.elapsed();
@@ -289,7 +342,7 @@ impl MealClient {
                 tokio::time::sleep(MIN_REQUEST_INTERVAL - elapsed).await;
             }
         }
-        let result = request.send().await;
+        let result = self.http.execute(request).await;
         *last = Some(Instant::now());
         let response = result?;
         if !response.status().is_success() {

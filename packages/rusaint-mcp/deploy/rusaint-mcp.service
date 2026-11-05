@@ -11,6 +11,8 @@ DynamicUser=yes
 # RUSAINT_ALLOWED_IDS, (고정 도메인이면) RUSAINT_MCP_PUBLIC_URL
 EnvironmentFile=/etc/rusaint-mcp/env
 Environment=RUSAINT_MCP_BIND=127.0.0.1:3000
+# "오늘"·현재 학기·자동 연장 시각을 한국 시간으로 계산합니다(VM 은 UTC).
+Environment=TZ=Asia/Seoul
 ExecStart=/usr/local/lib/rusaint-mcp/start.sh
 Restart=always
 RestartSec=5
