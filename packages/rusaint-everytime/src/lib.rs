@@ -18,9 +18,9 @@ use tokio::sync::Mutex;
 pub use model::*;
 
 const PUBLIC: &str = "https://everytime.kr";
-const API_HOST: &str = "api.everytime.kr";
 const API: &str = "https://api.everytime.kr";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
+const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
 /// 강의평 본문을 한 번에 가져오는 최대 개수
 pub const MAX_ARTICLES: u32 = 20;
 
@@ -64,7 +64,9 @@ impl EverytimeClient {
         let http = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .cookie_store(true)
-            .user_agent("Mozilla/5.0")
+            // 리다이렉트를 따라가지 않아야 로그인 성공(302)과 인증 만료(로그인 화면으로 302)를 구분할 수 있습니다.
+            .redirect(reqwest::redirect::Policy::none())
+            .user_agent(USER_AGENT)
             .build()?;
         Ok(Self {
             http,
@@ -91,7 +93,7 @@ impl EverytimeClient {
             ("password", self.password.clone()),
             ("redirect", "/".to_string()),
         ]);
-        let body = self
+        let res = self
             .http
             .post(format!("{PUBLIC}/user/login"))
             .header(reqwest::header::ORIGIN, PUBLIC)
@@ -102,14 +104,39 @@ impl EverytimeClient {
             )
             .body(form)
             .send()
-            .await?
-            .text()
             .await?;
-        // 로그인 실패 페이지는 alert 뒤 history.go(-1) 로 되돌립니다.
-        if body.contains("history.go(-1)") {
-            let reason = "아이디 또는 비밀번호가 올바르지 않습니다".to_string();
-            *self.rejected.lock().await = Some(reason);
-            return Err(EverytimeError::LoginFailed);
+        let status = res.status();
+        let location = location(&res);
+        let cookies: Vec<String> = res.cookies().map(|c| c.name().to_string()).collect();
+        // 값은 남기지 않고 상태·이동 위치·쿠키 이름만 남깁니다.
+        eprintln!(
+            "everytime login: status={} location={} cookies={:?}",
+            status.as_u16(),
+            location.as_deref().unwrap_or("-"),
+            cookies
+        );
+        if !status.is_redirection() {
+            let body = res.text().await?;
+            // 로그인 실패 페이지는 alert 뒤 history.go(-1) 로 되돌립니다.
+            if body.contains("history.go(-1)") {
+                let reason = "아이디 또는 비밀번호가 올바르지 않습니다".to_string();
+                *self.rejected.lock().await = Some(reason);
+                return Err(EverytimeError::LoginFailed);
+            }
+            eprintln!(
+                "everytime login: 예상 밖 응답 len={} captcha={} snippet={:?}",
+                body.len(),
+                body.contains("captcha") || body.contains("recaptcha"),
+                body.chars()
+                    .filter(|c| !c.is_control())
+                    .take(160)
+                    .collect::<String>()
+            );
+            return Err(EverytimeError::SecondaryAuthRequired);
+        }
+        if location.as_deref().is_some_and(|l| l.contains("login")) {
+            eprintln!("everytime login: 로그인 화면으로 되돌아감");
+            return Err(EverytimeError::SecondaryAuthRequired);
         }
         *self.logged_in.lock().await = true;
         Ok(())
@@ -134,7 +161,13 @@ impl EverytimeClient {
             .header(reqwest::header::REFERER, format!("{PUBLIC}/lecture"))
             .send()
             .await?;
-        if res.url().host_str() != Some("everytime.kr") {
+        if !res.status().is_success() {
+            eprintln!(
+                "everytime campus: status={} location={}",
+                res.status().as_u16(),
+                location(&res).as_deref().unwrap_or("-")
+            );
+            *self.logged_in.lock().await = false;
             return Err(EverytimeError::SecondaryAuthRequired);
         }
         let html = res.text().await?;
@@ -172,11 +205,30 @@ impl EverytimeClient {
             .body(urlencode(form))
             .send()
             .await?;
-        // 로그인·추가 인증이 필요하면 api 가 아닌 로그인 화면으로 리다이렉트됩니다.
-        if res.url().host_str() != Some(API_HOST) {
-            return Err(EverytimeError::SecondaryAuthRequired);
+        let status = res.status();
+        if !status.is_success() {
+            eprintln!(
+                "everytime api {path}: status={} location={}",
+                status.as_u16(),
+                location(&res).as_deref().unwrap_or("-")
+            );
+            if status.is_redirection() || status.as_u16() == 401 || status.as_u16() == 403 {
+                *self.logged_in.lock().await = false;
+                return Err(EverytimeError::SecondaryAuthRequired);
+            }
+            return Err(EverytimeError::Decode(format!("HTTP {}", status.as_u16())));
         }
         let text = res.text().await?;
+        if serde_json::from_str::<Value>(&text).is_err() {
+            eprintln!(
+                "everytime api {path}: JSON 아님 len={} snippet={:?}",
+                text.len(),
+                text.chars()
+                    .filter(|c| !c.is_control())
+                    .take(160)
+                    .collect::<String>()
+            );
+        }
         serde_json::from_str(&text).map_err(|e| EverytimeError::Decode(e.to_string()))
     }
 
@@ -327,6 +379,13 @@ impl EverytimeClient {
         let review = self.lecture_reviews(&hit.id).await?;
         Ok((hit, review))
     }
+}
+
+fn location(res: &reqwest::Response) -> Option<String> {
+    res.headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string)
 }
 
 /// application/x-www-form-urlencoded 본문을 만듭니다(공백은 `+`, 그 밖의 비영숫자는 %HH).
