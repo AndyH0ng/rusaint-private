@@ -16,6 +16,7 @@ use rusaint::application::scholarships::ScholarshipsApplication;
 use rusaint::application::student_information::StudentInformationApplication;
 use rusaint::model::SemesterType;
 use rusaint_calendar::CalendarClient;
+use rusaint_everytime::EverytimeClient;
 use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
@@ -85,6 +86,31 @@ pub struct DateRequest {
 pub struct SeatsRequest {
     /// library_seat_rooms 의 열람실 id
     pub room_id: u64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EverytimeSearchRequest {
+    /// 검색어 (과목명 또는 교수명)
+    pub keyword: String,
+    /// "name"(과목명, 기본) 또는 "professor"(교수명)
+    #[serde(default)]
+    pub field: Option<String>,
+    /// 가져올 과목 수 (1~100, 기본 10)
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EverytimeReviewsRequest {
+    /// 과목명 또는 교수명. everytime_search_lectures 의 결과가 여러 개면 lecture_id 로 지정하세요.
+    #[serde(default)]
+    pub keyword: Option<String>,
+    /// "name"(과목명, 기본) 또는 "professor"(교수명)
+    #[serde(default)]
+    pub field: Option<String>,
+    /// everytime_search_lectures 로 고른 에타 강의 id (keyword 대신 사용)
+    #[serde(default)]
+    pub lecture_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -366,6 +392,8 @@ pub struct SsuServer {
     calendar: Arc<CalendarClient>,
     regulation: Arc<RegulationClient>,
     library: Arc<OnceCell<Arc<LibraryClient>>>,
+    /// 에브리타임 강의평 조회용. 학교 계정과 무관한 별도 계정입니다.
+    everytime: Arc<OnceCell<Arc<EverytimeClient>>>,
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
     path: Arc<OnceCell<Arc<PathClient>>>,
@@ -389,6 +417,7 @@ impl SsuServer {
             calendar: Arc::new(CalendarClient::new().map_err(|e| e.to_string())?),
             regulation: Arc::new(RegulationClient::new().map_err(|e| e.to_string())?),
             library: Arc::new(OnceCell::new()),
+            everytime: Arc::new(OnceCell::new()),
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
             path: Arc::new(OnceCell::new()),
@@ -405,12 +434,16 @@ impl SsuServer {
     pub fn authenticated(
         sso: Arc<SsoCredentials>,
         library: Option<Arc<LibraryClient>>,
+        everytime: Option<Arc<EverytimeClient>>,
     ) -> Result<Self, String> {
         let mut server = Self::new()?;
         server.remote = true;
         let _ = server.sso.set(sso);
         if let Some(library) = library {
             let _ = server.library.set(library);
+        }
+        if let Some(everytime) = everytime {
+            let _ = server.everytime.set(everytime);
         }
         Ok(server)
     }
@@ -515,6 +548,22 @@ impl SsuServer {
             .get_or_try_init(|| async {
                 let (id, password) = keychain::credentials(keychain::LIBRARY_SERVICE).await?;
                 LibraryClient::new(id, password)
+                    .map(Arc::new)
+                    .map_err(|e| e.to_string())
+            })
+            .await
+            .cloned()
+    }
+
+    /// 에브리타임 클라이언트는 처음 필요할 때 Keychain 에서 계정을 읽어 만듭니다.
+    async fn everytime(&self) -> Result<Arc<EverytimeClient>, String> {
+        if self.remote && !self.everytime.initialized() {
+            return Err("에브리타임 계정이 연결되지 않았습니다. 커넥터를 다시 연결하고 에브리타임 계정도 입력하세요.".into());
+        }
+        self.everytime
+            .get_or_try_init(|| async {
+                let (id, password) = keychain::credentials(keychain::EVERYTIME_SERVICE).await?;
+                EverytimeClient::new(id, password)
                     .map(Arc::new)
                     .map_err(|e| e.to_string())
             })
@@ -1730,6 +1779,49 @@ impl SsuServer {
         to_json(&json!({ "saved": true, "path": dest, "bytes": bytes }))
     }
 
+    /// 에브리타임에 강의평이 등록된 과목을 검색합니다. 과목명 또는 교수명으로 찾으며, 결과의 id 를 everytime_lecture_reviews 에 넘깁니다.
+    /// rate 는 에타 평균 평점(5점 만점)입니다. 해당 학기 개설 여부와는 무관합니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn everytime_search_lectures(
+        &self,
+        Parameters(req): Parameters<EverytimeSearchRequest>,
+    ) -> ToolResult {
+        let client = self.everytime().await?;
+        let field = req.field.as_deref().unwrap_or("name");
+        let limit = req.limit.unwrap_or(10);
+        let hits = client
+            .search_lectures(&req.keyword, field, limit)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&hits)
+    }
+
+    /// 한 과목의 에브리타임 강의평을 가져옵니다. keyword(과목명·교수명)로 바로 찾거나, everytime_search_lectures 로 고른 lecture_id 를 넘깁니다.
+    /// 학생들이 직접 쓴 공식 후기가 아니라 에타 사용자 후기이며, 최신 본문 최대 20개와 객관식/주관식 집계를 돌려줍니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn everytime_lecture_reviews(
+        &self,
+        Parameters(req): Parameters<EverytimeReviewsRequest>,
+    ) -> ToolResult {
+        let client = self.everytime().await?;
+        if let Some(lecture_id) = req.lecture_id.as_deref().filter(|s| !s.trim().is_empty()) {
+            let review = client
+                .lecture_reviews(lecture_id)
+                .await
+                .map_err(|e| e.to_string())?;
+            return to_json(&review);
+        }
+        let Some(keyword) = req.keyword.as_deref().filter(|s| !s.trim().is_empty()) else {
+            return Err("keyword(과목명·교수명) 또는 lecture_id 중 하나가 필요합니다".into());
+        };
+        let field = req.field.as_deref().unwrap_or("name");
+        let (hit, review) = client
+            .find_reviews(keyword, field)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&json!({ "lecture": hit, "review": review }))
+    }
+
     /// 열람실별 전체·사용 중·빈 좌석 수. unableMessage 가 있으면 지금 이용할 수 없는 열람실입니다.
     /// 빈자리를 기다리려고 이 도구나 library_seats 를 반복 호출하지 마세요(학교 서버 부담, 노쇼 위험).
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
@@ -2057,12 +2149,18 @@ mod tests {
 
     #[tokio::test]
     async fn remote_accounts_are_isolated_and_never_fall_back_to_keychain() {
-        let first =
-            SsuServer::authenticated(rusaint_sso::SsoCredentials::new("first", "unused"), None)
-                .unwrap();
-        let second =
-            SsuServer::authenticated(rusaint_sso::SsoCredentials::new("second", "unused"), None)
-                .unwrap();
+        let first = SsuServer::authenticated(
+            rusaint_sso::SsoCredentials::new("first", "unused"),
+            None,
+            None,
+        )
+        .unwrap();
+        let second = SsuServer::authenticated(
+            rusaint_sso::SsoCredentials::new("second", "unused"),
+            None,
+            None,
+        )
+        .unwrap();
         assert_eq!(first.sso().await.unwrap().student_id(), "first");
         assert_eq!(second.sso().await.unwrap().student_id(), "second");
         assert!(first.library().await.is_err());

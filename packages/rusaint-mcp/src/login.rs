@@ -13,12 +13,13 @@ use std::process::{ExitCode, Stdio};
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::keychain::{self, LIBRARY_SERVICE, SSO_SERVICE};
+use crate::keychain::{self, EVERYTIME_SERVICE, LIBRARY_SERVICE, SSO_SERVICE};
 
 #[derive(Clone, Copy)]
 enum Account {
     Sso,
     Library,
+    Everytime,
 }
 
 impl Account {
@@ -26,6 +27,7 @@ impl Account {
         match self {
             Account::Sso => SSO_SERVICE,
             Account::Library => LIBRARY_SERVICE,
+            Account::Everytime => EVERYTIME_SERVICE,
         }
     }
 
@@ -33,6 +35,7 @@ impl Account {
         match self {
             Account::Sso => "통합(SSO) 계정 — u-saint·LMS·SSU-PATH",
             Account::Library => "중앙도서관 계정",
+            Account::Everytime => "에브리타임 계정 — 강의평 조회",
         }
     }
 }
@@ -42,9 +45,10 @@ pub async fn run(args: &[String]) -> ExitCode {
         None | Some("all") => &[Account::Sso, Account::Library],
         Some("sso") => &[Account::Sso],
         Some("library") => &[Account::Library],
+        Some("everytime") => &[Account::Everytime],
         Some("status") => return status().await,
         Some(other) => {
-            eprintln!("알 수 없는 대상: {other} (sso, library, status 중 하나)");
+            eprintln!("알 수 없는 대상: {other} (sso, library, everytime, status 중 하나)");
             return ExitCode::from(2);
         }
     };
@@ -104,7 +108,7 @@ async fn open_terminal(args: &[String]) -> ExitCode {
 }
 
 async fn status() -> ExitCode {
-    for account in [Account::Sso, Account::Library] {
+    for account in [Account::Sso, Account::Library, Account::Everytime] {
         match keychain::credentials(account.service()).await {
             Ok((id, password)) => eprintln!(
                 "{}: {id} (비밀번호 {}자 저장됨)",
@@ -200,6 +204,11 @@ async fn verify(account: Account, id: &str, password: &str) -> Result<(), String
             .map(|_| ())
             .map_err(|e| e.to_string()),
         Account::Library => rusaint_library::LibraryClient::new(id, password)
+            .map_err(|e| e.to_string())?
+            .login()
+            .await
+            .map_err(|e| e.to_string()),
+        Account::Everytime => rusaint_everytime::EverytimeClient::new(id, password)
             .map_err(|e| e.to_string())?
             .login()
             .await

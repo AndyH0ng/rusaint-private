@@ -129,6 +129,37 @@ pub fn login(ticket: &str, sso_url: &str) -> String {
 }
 
 /// SmartID 로그인 뒤 도서관 계정(선택)을 받는 화면
+pub fn everytime_step(ticket: &str, failed: bool) -> String {
+    let alert = if failed {
+        r#"<div class="alert error"><strong>에브리타임 아이디나 비밀번호를 확인해 주세요</strong></div>"#
+    } else {
+        ""
+    };
+    document(
+        "에브리타임도 연결할까요?",
+        &format!(
+            r#"<main class="card">
+<div class="header">
+<span class="badge"><i></i>마지막 단계</span>
+<h1>에브리타임도 연결할까요?</h1>
+<p class="desc">강의평을 물어보려면 에브리타임 로그인이 필요해요.</p>
+</div>
+<form class="content" method="post" action="/sso/everytime">
+{alert}
+<input type="hidden" name="ticket" value="{ticket}">
+<div class="field"><label for="eid">에브리타임 아이디</label><input id="eid" name="everytime_id" autocomplete="off" maxlength="128"></div>
+<div class="field"><label for="epw">에브리타임 비밀번호</label><input id="epw" type="password" name="everytime_password" autocomplete="off" maxlength="1024"></div>
+<div class="row">
+<button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
+<button type="submit"><span class="spin"></span><span>에브리타임 로그인하기</span></button>
+</div>
+</form>
+<p class="footer">에브리타임 비밀번호는 이 서버에만 잠깐 보관해요. 서버가 다시 켜지면 사라져요.</p>
+</main><script>{SCRIPT}</script>"#
+        ),
+    )
+}
+
 pub fn library_step(ticket: &str, failed: bool) -> String {
     let alert = if failed {
         r#"<div class="alert error"><strong>도서관 아이디나 비밀번호를 확인해 주세요</strong></div>"#

@@ -21,6 +21,7 @@ rpassword = "7.5"
 rmcp = { version = "=3.5.1", features = ["server", "transport-io", "macros", "transport-streamable-http-server"] }
 rusaint = { workspace = true }
 rusaint-calendar = { path = "../rusaint-calendar" }
+rusaint-everytime = { path = "../rusaint-everytime" }
 rusaint-library = { path = "../rusaint-library" }
 rusaint-lms = { path = "../rusaint-lms" }
 rusaint-meal = { path = "../rusaint-meal" }

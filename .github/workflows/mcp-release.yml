@@ -34,7 +34,7 @@ jobs:
       - name: Retrieve cache
         uses: Leafwing-Studios/cargo-cache@v2
       - name: Test
-        run: cargo test -p rusaint-mcp -p rusaint-regulation
+        run: cargo test -p rusaint-mcp -p rusaint-regulation -p rusaint-everytime
       - name: Build
         run: cargo build --release -p rusaint-mcp
       - name: Package

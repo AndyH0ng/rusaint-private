@@ -94,6 +94,16 @@ struct Data {
     codes: HashMap<String, Expiring<(Authorization, SsuServer)>>,
     /// SmartID 로그인은 끝났고 도서관 계정(선택)을 기다리는 연결
     sso_pending: HashMap<String, Expiring<(Authorization, Arc<rusaint_sso::SsoCredentials>)>>,
+    /// 도서관 단계까지 끝났고 에브리타임 계정(선택)을 기다리는 연결
+    #[allow(clippy::type_complexity)]
+    library_pending: HashMap<
+        String,
+        Expiring<(
+            Authorization,
+            Arc<rusaint_sso::SsoCredentials>,
+            Option<Arc<rusaint_library::LibraryClient>>,
+        )>,
+    >,
     tokens: HashMap<String, Expiring<SsuServer>>,
     refreshes: HashMap<String, Expiring<Refresh>>,
     attempts: Vec<Instant>,
@@ -111,6 +121,7 @@ impl Data {
         self.logins.retain(|_, v| v.alive());
         self.codes.retain(|_, v| v.alive());
         self.sso_pending.retain(|_, v| v.alive());
+        self.library_pending.retain(|_, v| v.alive());
         self.tokens.retain(|_, v| v.alive());
         self.refreshes.retain(|_, v| v.alive());
         self.attempts
@@ -187,6 +198,7 @@ fn router(app: App) -> Router {
         .route("/login", post(login))
         .route("/sso/callback/{ticket}", get(sso_callback))
         .route("/sso/finish", post(sso_finish))
+        .route("/sso/everytime", post(sso_everytime))
         .route("/token", post(token))
         .route("/mcp", any(mcp))
         .layer(axum::middleware::map_response(
@@ -392,7 +404,7 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
             client.login().await.map_err(|_| ())?;
             Some(client)
         };
-        SsuServer::authenticated(sso, library).map_err(|_| ())
+        SsuServer::authenticated(sso, library, None).map_err(|_| ())
     };
     let server = match tokio::time::timeout(Duration::from_secs(60), verified).await {
         Ok(Ok(server)) => server,
@@ -567,7 +579,89 @@ async fn sso_finish(
             }
         }
     };
-    let server = SsuServer::authenticated(sso, library).map_err(|_| invalid())?;
+    // 도서관 단계가 끝났으니 에브리타임(선택) 단계로 넘어갑니다.
+    let next = secret();
+    app.data
+        .lock()
+        .await
+        .library_pending
+        .insert(next.clone(), Expiring::new((auth, sso, library), TTL));
+    Ok(Html(crate::page::everytime_step(&next, false)).into_response())
+}
+
+#[derive(Deserialize)]
+struct EverytimeFinish {
+    ticket: String,
+    /// "건너뛰기" 버튼. 입력한 에브리타임 계정은 무시합니다.
+    #[serde(default)]
+    skip: Option<String>,
+    #[serde(default)]
+    everytime_id: String,
+    #[serde(default)]
+    everytime_password: String,
+}
+
+/// 마지막 단계: 에브리타임 계정(선택)을 받고 연결을 마칩니다. 에타는 학교 SSO 와 무관한 별도 계정입니다.
+async fn sso_everytime(
+    State(app): State<App>,
+    Form(req): Form<EverytimeFinish>,
+) -> Result<Response, HttpError> {
+    let (auth, sso, library) = {
+        let mut data = app.data.lock().await;
+        data.prune();
+        if data.attempts.len() >= 10 || data.refreshes.len() + data.codes.len() >= 128 {
+            return Err(error(
+                StatusCode::TOO_MANY_REQUESTS,
+                "temporarily_unavailable",
+            ));
+        }
+        data.library_pending
+            .remove(&req.ticket)
+            .ok_or_else(invalid)?
+            .value
+    };
+    let (everytime_id, everytime_password) = if req.skip.is_some() {
+        (String::new(), String::new())
+    } else {
+        (req.everytime_id, req.everytime_password)
+    };
+    if everytime_id.len() > 128
+        || everytime_password.len() > 1024
+        || everytime_id.trim().is_empty() != everytime_password.is_empty()
+    {
+        return Err(invalid());
+    }
+    let everytime = if everytime_id.trim().is_empty() {
+        None
+    } else {
+        app.data.lock().await.attempts.push(Instant::now());
+        let login = async {
+            let client = Arc::new(
+                rusaint_everytime::EverytimeClient::new(everytime_id.trim(), everytime_password)
+                    .map_err(|_| ())?,
+            );
+            client.login().await.map_err(|_| ())?;
+            Ok::<_, ()>(client)
+        };
+        match tokio::time::timeout(Duration::from_secs(60), login).await {
+            Ok(Ok(client)) => Some(client),
+            _ => {
+                // 앞 단계는 모두 끝났으니 에타만 다시 입력하거나 건너뛸 수 있게 합니다.
+                let next = secret();
+                app.data
+                    .lock()
+                    .await
+                    .library_pending
+                    .insert(next.clone(), Expiring::new((auth, sso, library), TTL));
+                return Ok((
+                    StatusCode::UNAUTHORIZED,
+                    Html(crate::page::everytime_step(&next, true)),
+                )
+                    .into_response());
+            }
+        }
+    };
+    let server = SsuServer::authenticated(sso, library, everytime).map_err(|_| invalid())?;
     server.spawn_keepalive();
     issue_code(&app, auth, server).await
 }
@@ -822,8 +916,13 @@ mod tests {
             ),
             ("2-library.html", crate::page::library_step("t", false)),
             ("3-library-error.html", crate::page::library_step("t", true)),
+            ("4-everytime.html", crate::page::everytime_step("t", false)),
             (
-                "4-expired.html",
+                "5-everytime-error.html",
+                crate::page::everytime_step("t", true),
+            ),
+            (
+                "6-expired.html",
                 crate::page::message(
                     "처음부터 다시 연결해 주세요",
                     "보안을 위해 로그인 화면은 5분만 열려 있어요. Claude에서 연결을 다시 눌러 주세요.",
@@ -901,7 +1000,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn sso_finish_without_library_issues_a_code() {
+    async fn sso_finish_moves_to_everytime_step() {
         let app = app();
         app.data.lock().await.sso_pending.insert(
             "next".into(),
@@ -913,6 +1012,7 @@ mod tests {
                 TTL,
             ),
         );
+        // 도서관을 건너뛰면 에브리타임 단계로 넘어간다(아직 코드 발급 전).
         let r = sso_finish(
             State(app.clone()),
             Form(Finish {
@@ -924,18 +1024,18 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(r.status(), StatusCode::SEE_OTHER);
-        let location = r.headers()[header::LOCATION].to_str().unwrap();
-        assert!(location.starts_with(CALLBACK), "{location}");
-        assert!(location.contains("state=opaque-state"));
-        let data = app.data.lock().await;
-        assert!(data.sso_pending.is_empty());
-        assert_eq!(data.codes.len(), 1);
-        drop(data);
+        assert_eq!(r.status(), StatusCode::OK);
+        let ticket = {
+            let data = app.data.lock().await;
+            assert!(data.sso_pending.is_empty());
+            assert!(data.codes.is_empty());
+            assert_eq!(data.library_pending.len(), 1);
+            data.library_pending.keys().next().unwrap().clone()
+        };
 
-        // 같은 티켓은 다시 쓸 수 없다
+        // 같은 sso_pending 티켓은 다시 쓸 수 없다
         let again = sso_finish(
-            State(app),
+            State(app.clone()),
             Form(Finish {
                 ticket: "next".into(),
                 skip: None,
@@ -945,6 +1045,26 @@ mod tests {
         )
         .await;
         assert!(again.is_err());
+
+        // 에브리타임도 건너뛰면 코드가 발급된다.
+        let r = sso_everytime(
+            State(app.clone()),
+            Form(EverytimeFinish {
+                ticket: ticket.clone(),
+                skip: None,
+                everytime_id: "".into(),
+                everytime_password: "".into(),
+            }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(r.status(), StatusCode::SEE_OTHER);
+        let location = r.headers()[header::LOCATION].to_str().unwrap();
+        assert!(location.starts_with(CALLBACK), "{location}");
+        assert!(location.contains("state=opaque-state"));
+        let data = app.data.lock().await;
+        assert!(data.library_pending.is_empty());
+        assert_eq!(data.codes.len(), 1);
     }
 
     fn auth() -> Authorization {
@@ -1052,9 +1172,12 @@ mod tests {
         );
     }
     async fn seed(app: &App, authorization: Authorization) {
-        let server =
-            SsuServer::authenticated(rusaint_sso::SsoCredentials::new("test", "unused"), None)
-                .unwrap();
+        let server = SsuServer::authenticated(
+            rusaint_sso::SsoCredentials::new("test", "unused"),
+            None,
+            None,
+        )
+        .unwrap();
         app.data
             .lock()
             .await
