@@ -81,6 +81,9 @@ struct App {
     base: String,
     /// 로그인을 허용할 학번. 목록에 없으면 SmartID 에 보내지 않습니다.
     allowed: Arc<Vec<String>>,
+    /// 학교 SmartID 로 로그인하면 목록에 없는 학번도 받습니다(`RUSAINT_SSO_OPEN=1`).
+    /// 비밀번호를 서버에 보내지 않으므로 남의 계정을 잠글 수 없습니다. 비밀번호 로그인은 계속 목록만 허용합니다.
+    sso_open: bool,
     data: Arc<Mutex<Data>>,
 }
 #[derive(Default)]
@@ -137,12 +140,17 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err("RUSAINT_MCP_PUBLIC_URL 은 경로 없는 공개 HTTPS 주소여야 합니다".into());
     }
     let allowed = allowed_ids(&std::env::var("RUSAINT_ALLOWED_IDS").unwrap_or_default());
-    if allowed.is_empty() {
-        return Err("RUSAINT_ALLOWED_IDS 에 로그인을 허용할 학번을 쉼표로 넣어 주세요".into());
+    let sso_open = std::env::var("RUSAINT_SSO_OPEN").is_ok_and(|v| v == "1");
+    if allowed.is_empty() && !sso_open {
+        return Err("RUSAINT_ALLOWED_IDS 에 로그인을 허용할 학번을 쉼표로 넣거나, 학교 SSO 로그인을 누구나 쓰게 하려면 RUSAINT_SSO_OPEN=1 을 설정하세요".into());
+    }
+    if sso_open {
+        eprintln!("학교 SSO 로그인: 모든 학번 허용 (비밀번호 로그인은 RUSAINT_ALLOWED_IDS 만)");
     }
     let app = App {
         base: base.trim_end_matches('/').to_string(),
         allowed: Arc::new(allowed),
+        sso_open,
         data: Arc::default(),
     };
     let cleanup = app.data.clone();
@@ -447,7 +455,9 @@ async fn sso_callback(
             "SmartID 에서 로그인 정보가 돌아오지 않았습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
         ));
     };
-    if !app.allowed.contains(&id) {
+    let id_shape =
+        !id.is_empty() && id.len() <= 20 && id.chars().all(|c| c.is_ascii_alphanumeric());
+    if !id_shape || !(app.sso_open || app.allowed.contains(&id)) {
         return Ok(page(
             StatusCode::FORBIDDEN,
             "허용되지 않은 학번",
@@ -714,6 +724,7 @@ mod tests {
         App {
             base: "https://mcp.example.com".into(),
             allowed: Arc::new(allowed_ids(" 20240000 , ,20249999")),
+            sso_open: false,
             data: Arc::default(),
         }
     }
@@ -814,6 +825,41 @@ mod tests {
             .insert("ticket".into(), Expiring::new(auth(), TTL));
         let r = callback(&app, "ticket", None, Some("20240000")).await;
         assert_eq!(r.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn sso_open_still_rejects_malformed_ids_and_keeps_password_login_closed() {
+        let app = App {
+            sso_open: true,
+            ..app()
+        };
+        app.data
+            .lock()
+            .await
+            .logins
+            .insert("ticket".into(), Expiring::new(auth(), TTL));
+        let r = callback(&app, "ticket", Some("t"), Some("../x")).await;
+        assert_eq!(r.status(), StatusCode::FORBIDDEN);
+
+        // 비밀번호 로그인은 sso_open 이어도 목록 밖 학번을 SmartID 에 보내지 않는다
+        app.data
+            .lock()
+            .await
+            .logins
+            .insert("ticket".into(), Expiring::new(auth(), TTL));
+        let r = login(
+            State(app.clone()),
+            Form(Login {
+                ticket: "ticket".into(),
+                id: "19990000".into(),
+                password: "x".into(),
+                library_id: "".into(),
+                library_password: "".into(),
+            }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(r.status(), StatusCode::FORBIDDEN);
     }
 
     #[tokio::test]
