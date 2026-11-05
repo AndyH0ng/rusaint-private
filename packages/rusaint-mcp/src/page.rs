@@ -111,7 +111,7 @@ pub fn login(ticket: &str, sso_url: &str) -> String {
 {SCOPE}
 <div class="safe">{LOCK}<div><strong>비밀번호는 이 서버로 오지 않아요</strong><p>학교는 이 서버에 로그인 결과만 보내기에, 이 서버 어디에도 비밀번호가 남지 않아요.</p></div></div>
 <a class="button" href="{sso_url}">숭실대학교 SSO로 로그인</a>
-<details><summary><span>비밀번호로 연결</span></summary>
+<details><summary><span>대신 비밀번호로 연결하기</span></summary>
 <form method="post" action="/login">
 <p class="hint">이 서버에 비밀번호를 저장해서, 세션이 끊겨도 서버가 갱신해요. 덕분에 매일 로그인하지 않아도 돼요.<br>등록한 학번만 쓸 수 있어요.</p>
 <input type="hidden" name="ticket" value="{ticket}">
