@@ -19,6 +19,8 @@ env:
 jobs:
   release-crate:
     name: Crate (crates.io)
+    # 원본 레포에서만 배포합니다. 이 개인 개발 레포의 main 에서는 crates.io·PyPI 등에 올리지 않습니다.
+    if: github.repository == 'EATSTEAK/rusaint'
     runs-on: ubuntu-latest
     environment: release
     outputs:
