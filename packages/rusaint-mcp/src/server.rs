@@ -27,6 +27,7 @@ use serde_json::json;
 use tokio::sync::OnceCell;
 
 use crate::automation::{Automation, MAX_RENEW_HOURS};
+use crate::chapel;
 use crate::courses::{self, Kind};
 use crate::keychain;
 use crate::pending::{Action, Pending};
@@ -209,6 +210,16 @@ pub struct SemesterRequest {
     pub year: Option<u32>,
     /// 1학기, 2학기, 여름학기, 겨울학기. 생략하면 현재 학기
     pub semester: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ChapelRequest {
+    /// 연도 (예: 2026). 생략하면 현재 학기
+    pub year: Option<u32>,
+    /// 1학기, 2학기, 여름학기, 겨울학기. 생략하면 현재 학기
+    pub semester: Option<String>,
+    /// 학기 총 채플 회차. 생략하면 u-saint 출결표에 나온 회차 수로 계산합니다
+    pub total_sessions: Option<u32>,
 }
 
 impl SemesterRequest {
@@ -636,14 +647,52 @@ impl SsuServer {
         to_json(&json!({ "student": student, "requirements": requirements }))
     }
 
-    /// u-saint 채플 이수 현황(출석·결석 기록, 이수 여부)
+    /// u-saint 채플 이수 현황(출석·결석 기록, 유고결석 신청, 성적)과 규정 기준 계산.
+    /// summary 는 규정집의 「대학채플 이수에 관한 내규」 성적평가 조문에서 읽은 결석 비율로 F 기준과 남은 결석 가능 횟수를 계산한 값입니다.
+    /// 채플 기준은 개정된 적이 있으니 기억하는 기준(예: 2/3 출석)으로 답하지 말고 summary 와 rules.articles 조문을 근거로 답하세요.
+    /// total_sessions 는 출결표 회차 수라 학기 중에는 남은 회차가 빠져 있을 수 있습니다. 출결표에 미래 날짜가 없으면 그 점을 알리고,
+    /// 사용자가 학기 총 회차를 알려 주면 total_sessions 로 다시 부르세요.
+    /// excused 는 이번 학기 유고결석 신청과 승인 상한입니다. 보건결석은 채플 출석으로 인정되지 않고(내규 제7조),
+    /// 사후 신청 기한·사유별 허용 기간은 학생생활규정 제22조와 [별표1] 을 안내하세요. 지각 2회 인정, 보충채플도 조문에 있습니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
-    async fn usaint_chapel(&self, Parameters(req): Parameters<SemesterRequest>) -> ToolResult {
-        let (year, semester) = req.resolve()?;
-        let u = self.usaint().await?;
-        let mut app = u.app::<ChapelApplication>().await?;
-        let info = app.information(year, semester).await.map_err(usaint::err)?;
-        to_json(&json!({ "year": year, "semester": semester, "chapel": info }))
+    async fn usaint_chapel(&self, Parameters(req): Parameters<ChapelRequest>) -> ToolResult {
+        let (year, semester) = SemesterRequest {
+            year: req.year,
+            semester: req.semester.clone(),
+        }
+        .resolve()?;
+        let rules = async {
+            let (chapel, life) = tokio::join!(
+                self.regulation
+                    .regulation(rusaint_regulation::CHAPEL_REGULATION),
+                self.regulation
+                    .regulation(rusaint_regulation::STUDENT_LIFE_REGULATION),
+            );
+            chapel
+                .map(|c| rusaint_regulation::ChapelRules::from_regulations(&c, life.ok().as_ref()))
+        };
+        let info = async {
+            let u = self.usaint().await?;
+            let mut app = u.app::<ChapelApplication>().await?;
+            app.information(year, semester).await.map_err(usaint::err)
+        };
+        let (rules, info) = tokio::join!(rules, info);
+        let info = info?;
+        let (rules, rules_error) = match rules {
+            Ok(r) => (Some(r), None),
+            Err(e) => (None, Some(format!("규정집을 읽지 못했습니다: {e}"))),
+        };
+        let (summary, excused) = chapel::summarize(&info, rules.as_ref(), req.total_sessions);
+        to_json(&json!({
+            "year": year,
+            "semester": semester,
+            "summary": summary,
+            "excused": excused,
+            "rules": rules,
+            "rules_error": rules_error,
+            "note": "규정은 규정집의 현재 개정본입니다. 부칙의 시행일 이전 학기에는 개정 전 기준이 적용될 수 있습니다.",
+            "chapel": info,
+        }))
     }
 
     /// u-saint 장학금 수혜 내역

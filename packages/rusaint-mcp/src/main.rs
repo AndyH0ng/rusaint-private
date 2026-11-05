@@ -4,6 +4,7 @@
 //! `rusaint-mcp login` 은 MCP 서버 대신 계정 저장 명령을 실행합니다.
 
 mod automation;
+mod chapel;
 mod courses;
 mod keychain;
 mod login;

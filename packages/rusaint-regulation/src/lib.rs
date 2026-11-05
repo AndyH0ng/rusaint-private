@@ -23,16 +23,150 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const CACHE_TTL: Duration = Duration::from_secs(6 * 3600);
 
 /// 학생에게 필요한 학사·장학 규정. (규정집 트리의 id, 짧은 이름)
-pub const REGULATIONS: [(u32, &str); 8] = [
+pub const REGULATIONS: [(u32, &str); 10] = [
     (89, "학칙"),
     (99, "학칙시행세칙"),
     (95, "학사관리내규"),
     (96, "연계융합전공"),
     (98, "교육과정규정"),
+    (217, "대학채플이수에관한내규"),
+    (230, "학생생활규정"),
     (233, "장학규정"),
     (234, "장학금지급내규"),
     (238, "국가장학금II내규"),
 ];
+
+/// 대학채플 이수에 관한 내규
+pub const CHAPEL_REGULATION: u32 = 217;
+/// 학생생활규정 (유고결석 제22조)
+pub const STUDENT_LIFE_REGULATION: u32 = 230;
+
+/// 조문에 적힌 비율. "20%" 는 20/100, "3분의 1" 은 1/3 입니다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Ratio {
+    pub numerator: u32,
+    pub denominator: u32,
+}
+
+static PERCENT: LazyLock<regex_lite::Regex> =
+    LazyLock::new(|| regex_lite::Regex::new(r"(\d+)\s*%").unwrap());
+static FRACTION: LazyLock<regex_lite::Regex> =
+    LazyLock::new(|| regex_lite::Regex::new(r"(\d+)\s*분의\s*(\d+)").unwrap());
+
+impl Ratio {
+    /// 문장에서 처음 나오는 비율
+    pub fn parse(line: &str) -> Option<Self> {
+        let percent = PERCENT.captures(line).map(|c| {
+            let at = c.get(0).unwrap().start();
+            (at, c[1].parse().ok().map(|n| (n, 100)))
+        });
+        let fraction = FRACTION.captures(line).map(|c| {
+            let at = c.get(0).unwrap().start();
+            (at, c[2].parse().ok().zip(c[1].parse().ok()))
+        });
+        let (_, found) = match (percent, fraction) {
+            (Some(p), Some(f)) => {
+                if p.0 <= f.0 {
+                    p
+                } else {
+                    f
+                }
+            }
+            (p, f) => p.or(f)?,
+        };
+        let (numerator, denominator) = found?;
+        (denominator > 0).then_some(Self {
+            numerator,
+            denominator,
+        })
+    }
+
+    /// `total` 회 중 이 비율 "이상" 이 되는 가장 작은 횟수 (ceil)
+    pub fn at_least(&self, total: u32) -> u32 {
+        (self.numerator * total).div_ceil(self.denominator)
+    }
+
+    /// `total` 회 중 이 비율을 넘지 않는 가장 큰 횟수 (floor)
+    pub fn at_most(&self, total: u32) -> u32 {
+        self.numerator * total / self.denominator
+    }
+}
+
+/// 채플 이수와 유고결석에 관한 조문에서 뽑은 기준
+#[derive(Debug, Clone, Serialize)]
+pub struct ChapelRules {
+    /// 이 비율 이상 결석하면 F (채플 내규 성적평가 조문)
+    pub fail_ratio: Option<Ratio>,
+    /// 유고결석을 승인할 수 있는 최대 비율 (학생생활규정 유고결석 조문)
+    pub excused_cap: Option<Ratio>,
+    /// 보건결석은 채플 출석으로 인정하지 않는지 (채플 내규 유고결석 인정 조문)
+    pub health_not_excused: bool,
+    /// 근거 조문 원문
+    pub articles: Vec<SourcedArticle>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SourcedArticle {
+    pub regulation: String,
+    pub url: String,
+    #[serde(flatten)]
+    pub article: Article,
+}
+
+fn find<'a>(r: &'a Regulation, title: &str) -> Option<&'a Article> {
+    r.articles.iter().find(|a| a.title.contains(title))
+}
+
+impl ChapelRules {
+    /// 채플 내규와 학생생활규정 본문에서 기준을 뽑습니다. 문구가 바뀌어 숫자를 못 찾으면 `None` 으로 두고
+    /// 조문 원문은 그대로 넘깁니다.
+    pub fn from_regulations(chapel: &Regulation, life: Option<&Regulation>) -> Self {
+        let grading = find(chapel, "성적평가");
+        let fail_ratio = grading.and_then(|a| {
+            a.body
+                .iter()
+                .filter(|l| l.contains("결석"))
+                .find_map(|l| Ratio::parse(l))
+        });
+        let excused = find(chapel, "유고결석");
+        let health_not_excused = excused.is_some_and(|a| {
+            a.body
+                .iter()
+                .any(|l| l.contains("보건결석") && l.contains("인정하지"))
+        });
+        let life_excused = life.and_then(|r| find(r, "(유고결석)"));
+        let excused_cap = life_excused.and_then(|a| {
+            a.body
+                .iter()
+                .filter(|l| l.contains("승인") && (l.contains("초과") || l.contains("이내")))
+                .find_map(|l| Ratio::parse(l))
+        });
+
+        let mut articles = Vec::new();
+        let mut push = |r: &Regulation, a: Option<&Article>| {
+            if let Some(a) = a {
+                articles.push(SourcedArticle {
+                    regulation: r.name.clone(),
+                    url: r.url.clone(),
+                    article: a.clone(),
+                });
+            }
+        };
+        push(chapel, grading);
+        push(chapel, find(chapel, "출석 인정"));
+        push(chapel, excused);
+        push(chapel, find(chapel, "보충채플"));
+        if let Some(life) = life {
+            push(life, life_excused);
+        }
+        Self {
+            fail_ratio,
+            excused_cap,
+            health_not_excused,
+            articles,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Article {
@@ -330,6 +464,73 @@ mod tests {
         assert!(a.body.iter().any(|l| l.contains("별표6")));
         // 부칙의 시행일 조문은 넣지 않습니다.
         assert!(!articles.iter().any(|a| a.title.contains("시행일")));
+    }
+
+    #[test]
+    fn ratios_parse_percent_and_fraction() {
+        let r = Ratio::parse("채플은 총 시간의 20% 이상 결석 시 F등급 처리한다.").unwrap();
+        assert_eq!((r.numerator, r.denominator), (20, 100));
+        let r = Ratio::parse("총 수업일수의 3분의 1이상을 초과하여").unwrap();
+        assert_eq!((r.numerator, r.denominator), (1, 3));
+        assert_eq!(Ratio::parse("결석 시 F"), None);
+        let fifth = Ratio {
+            numerator: 20,
+            denominator: 100,
+        };
+        // 10회 중 2회(20%) 부터 F, 12회 중 3회(25%) 부터 F
+        assert_eq!(fifth.at_least(10), 2);
+        assert_eq!(fifth.at_least(12), 3);
+        let third = Ratio {
+            numerator: 1,
+            denominator: 3,
+        };
+        assert_eq!(third.at_most(13), 4);
+    }
+
+    fn fixture(id: u32, name: &str, html: &str) -> Regulation {
+        Regulation {
+            id,
+            name: name.into(),
+            url: format!("{BASE}/lmxsrv/law/lawDetail.do?SEQ={id}&LAWGROUP=1"),
+            articles: parse_articles(html),
+            attachments: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn chapel_rules_come_from_regulations() {
+        let chapel = fixture(
+            217,
+            "5-1-3 대학채플이수에관한내규",
+            include_str!("../tests/fixtures/content_217.html"),
+        );
+        let life = fixture(
+            230,
+            "7-1-1 학생생활규정",
+            include_str!("../tests/fixtures/content_230.html"),
+        );
+        let rules = ChapelRules::from_regulations(&chapel, Some(&life));
+        assert_eq!(
+            rules.fail_ratio,
+            Some(Ratio {
+                numerator: 20,
+                denominator: 100
+            })
+        );
+        assert_eq!(
+            rules.excused_cap,
+            Some(Ratio {
+                numerator: 1,
+                denominator: 3
+            })
+        );
+        assert!(rules.health_not_excused);
+        let titles: Vec<_> = rules
+            .articles
+            .iter()
+            .map(|a| a.article.number().to_string())
+            .collect();
+        assert_eq!(titles, ["제4조", "제6조", "제7조", "제10조", "제22조"]);
     }
 
     #[test]
