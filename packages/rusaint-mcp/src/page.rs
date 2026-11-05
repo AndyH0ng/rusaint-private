@@ -43,6 +43,13 @@ button:disabled .spin{display:inline-block}
 .alert{display:grid;gap:4px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius)}
 .alert.error{border-color:color-mix(in srgb,var(--destructive) 40%,transparent);color:var(--destructive)}
 .alert p{color:var(--muted-foreground)}
+a.button{height:44px;width:100%;display:inline-flex;align-items:center;justify-content:center;border-radius:calc(var(--radius) - 2px);background:var(--primary);color:var(--primary-foreground);font-size:15px;font-weight:600;text-decoration:none;box-shadow:0 1px 2px rgb(0 0 0/.1);transition:opacity .15s}
+a.button:hover{opacity:.9}
+a.button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent)}
+.hint{color:var(--muted-foreground);font-size:13px}
+.hint b{color:var(--foreground);font-weight:500}
+details form{display:grid;gap:12px;padding:0 12px 12px}
+button.secondary{background:transparent;color:var(--foreground);border:1px solid var(--border);box-shadow:none}
 "#;
 
 /// 제출 중 버튼을 잠가 두 번 보내지 않게 합니다(로그인 화면 티켓은 한 번만 쓸 수 있음).
@@ -70,29 +77,78 @@ fn document(title: &str, body: &str) -> String {
     )
 }
 
+fn escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+const SCOPE: &str = r#"<div class="scope"><span>u-saint</span><span>LMS</span><span>SSU-PATH</span><span>학식</span><span>도서관</span></div>"#;
+
+/// 첫 화면. 기본은 학교 SmartID 화면으로 보내 비밀번호를 이 서버가 받지 않게 합니다.
 /// `ticket` 은 서버가 만든 16진수 값이라 그대로 넣어도 안전합니다.
-pub fn login(ticket: &str) -> String {
+pub fn login(ticket: &str, sso_url: &str) -> String {
+    let sso_url = escape(sso_url);
     document(
         "숭실대학교 계정 연결",
         &format!(
             r#"<main class="card">
 <div class="header">
-<span class="badge"><i></i>rusaint MCP</span>
+<span class="badge"><i></i>rusaint MCP · 비공식</span>
 <h1>숭실대학교 계정 연결</h1>
-<p class="desc">통합 계정으로 로그인하면 AI 앱이 요청에 따라 학교 정보를 조회하고, 도서관 예약은 확인을 받은 뒤 실행합니다.</p>
+<p class="desc">AI 앱이 요청에 따라 학교 정보를 조회하고, 도서관 예약은 확인을 받은 뒤 실행합니다.</p>
 </div>
-<form class="content" method="post" action="/login">
-<div class="scope"><span>u-saint</span><span>LMS</span><span>SSU-PATH</span><span>학식</span><span>도서관</span></div>
+<div class="content">
+{SCOPE}
+<a class="button" href="{sso_url}">숭실대 통합 로그인으로 연결</a>
+<p class="hint"><b>smartid.ssu.ac.kr</b> 학교 로그인 화면으로 이동합니다. 비밀번호는 학교 화면에만 입력하며, 이 서버는 학교가 발급한 로그인 토큰(약 하루 유효)만 받습니다. 하루가 지나면 다시 연결해야 합니다.</p>
+<details><summary><span>학번·비밀번호로 직접 연결 <small>서버 운영자용 · 오래 유지</small></span></summary>
+<form method="post" action="/login">
+<p class="hint">비밀번호를 이 서버 메모리에 맡겨 학교 세션이 끊겨도 다시 로그인합니다. 이 서버를 운영하는 본인만 쓰세요.</p>
 <input type="hidden" name="ticket" value="{ticket}">
-<div class="field"><label for="id">학번</label><input id="id" name="id" inputmode="numeric" autocomplete="username" placeholder="20240000" required maxlength="128" autofocus></div>
+<div class="field"><label for="id">학번</label><input id="id" name="id" inputmode="numeric" autocomplete="username" placeholder="20240000" required maxlength="128"></div>
 <div class="field"><label for="pw">통합 계정 비밀번호</label><input id="pw" type="password" name="password" autocomplete="current-password" required maxlength="1024"></div>
-<details><summary><span>도서관 계정 <small>선택</small></span></summary><div class="inner">
+<div class="field"><label for="lid">도서관 아이디 <small>선택</small></label><input id="lid" name="library_id" autocomplete="off" maxlength="128"></div>
+<div class="field"><label for="lpw">도서관 비밀번호 <small>선택</small></label><input id="lpw" type="password" name="library_password" autocomplete="off" maxlength="1024"></div>
+<button type="submit" class="secondary"><span class="spin"></span><span>비밀번호로 연결</span></button>
+</form></details>
+</div>
+<p class="footer">계정과 토큰은 이 서버 메모리에만 있고 서버가 재시작되면 사라집니다.</p>
+</main><script>{SCRIPT}</script>"#
+        ),
+    )
+}
+
+/// SmartID 로그인 뒤 도서관 계정(선택)을 받는 화면. `id` 는 허용 목록을 통과한 학번입니다.
+pub fn library_step(ticket: &str, id: &str, error: Option<&str>) -> String {
+    let id = escape(id);
+    let alert = error
+        .map(|e| {
+            format!(
+                r#"<div class="alert error"><strong>도서관 로그인 실패</strong><p>{}</p></div>"#,
+                escape(e)
+            )
+        })
+        .unwrap_or_default();
+    document(
+        "도서관 계정 연결",
+        &format!(
+            r#"<main class="card">
+<div class="header">
+<span class="badge"><i></i>통합 로그인 완료 · {id}</span>
+<h1>도서관 계정 <small>선택</small></h1>
+<p class="desc">열람실 좌석·스터디룸·대출을 쓰려면 도서관 계정이 필요합니다. 도서관(oasis)은 학교 통합 로그인을 지원하지 않아, 쓰려면 이 서버에 아이디·비밀번호를 입력해야 합니다.</p>
+</div>
+<form class="content" method="post" action="/sso/finish">
+{alert}
+<input type="hidden" name="ticket" value="{ticket}">
 <div class="field"><label for="lid">도서관 아이디</label><input id="lid" name="library_id" autocomplete="off" maxlength="128"></div>
 <div class="field"><label for="lpw">도서관 비밀번호</label><input id="lpw" type="password" name="library_password" autocomplete="off" maxlength="1024"></div>
-</div></details>
-<button type="submit"><span class="spin"></span><span>로그인하고 연결 허용</span></button>
+<button type="submit"><span class="spin"></span><span>연결 완료</span></button>
+<p class="hint">도서관 기능을 쓰지 않으면 <b>비워 두고 연결 완료</b>를 누르세요.</p>
 </form>
-<p class="footer">비공식 서버입니다. 계정은 이 서버 메모리에만 보관되고 연결이 끝나거나 서버가 재시작되면 사라집니다.</p>
+<p class="footer">도서관 비밀번호를 입력하면 이 서버 메모리에만 보관되고 서버가 재시작되면 사라집니다.</p>
 </main><script>{SCRIPT}</script>"#
         ),
     )

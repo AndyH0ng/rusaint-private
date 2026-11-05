@@ -327,12 +327,11 @@ impl MealClient {
         if with_cookie {
             let cookie = self.challenge_cookie.lock().await.clone();
             if let Some((value, _)) = cookie.filter(|(_, at)| at.elapsed() < CHALLENGE_COOKIE_TTL)
+                && let Ok(header) = format!("{}={value}", challenge::COOKIE_NAME).parse()
             {
-                if let Ok(header) = format!("{}={value}", challenge::COOKIE_NAME).parse() {
-                    request
-                        .headers_mut()
-                        .insert(reqwest::header::COOKIE, header);
-                }
+                request
+                    .headers_mut()
+                    .insert(reqwest::header::COOKIE, header);
             }
         }
         let mut last = self.last_request.lock().await;

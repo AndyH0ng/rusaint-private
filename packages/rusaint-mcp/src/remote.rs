@@ -9,7 +9,7 @@ use std::{
 
 use axum::{
     Form, Json, Router,
-    extract::{Query, Request, State},
+    extract::{Path, Query, Request, State},
     http::{StatusCode, header},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{any, get, post},
@@ -29,6 +29,7 @@ use url::Url;
 use crate::server::SsuServer;
 
 const CALLBACK: &str = "https://claude.ai/api/mcp/auth_callback";
+const SMARTID_LOGIN: &str = "https://smartid.ssu.ac.kr/Symtra_sso/smln.asp";
 
 /// Claude 웹/앱의 고정 콜백, 또는 Claude Code·Codex 같은 CLI 가 띄우는 루프백 콜백(RFC 8252)만 허용합니다.
 /// 루프백은 로그인한 사람 자신의 컴퓨터로만 돌아가므로 남이 등록해도 코드를 가로챌 수 없습니다.
@@ -88,6 +89,8 @@ struct Data {
     clients: HashMap<String, Expiring<Vec<String>>>,
     logins: HashMap<String, Expiring<Authorization>>,
     codes: HashMap<String, Expiring<(Authorization, SsuServer)>>,
+    /// SmartID 로그인은 끝났고 도서관 계정(선택)을 기다리는 연결
+    sso_pending: HashMap<String, Expiring<(Authorization, Arc<rusaint_sso::SsoCredentials>)>>,
     tokens: HashMap<String, Expiring<SsuServer>>,
     refreshes: HashMap<String, Expiring<Refresh>>,
     attempts: Vec<Instant>,
@@ -104,6 +107,7 @@ impl Data {
         self.clients.retain(|_, v| v.alive());
         self.logins.retain(|_, v| v.alive());
         self.codes.retain(|_, v| v.alive());
+        self.sso_pending.retain(|_, v| v.alive());
         self.tokens.retain(|_, v| v.alive());
         self.refreshes.retain(|_, v| v.alive());
         self.attempts
@@ -173,6 +177,8 @@ fn router(app: App) -> Router {
         .route("/register", post(register))
         .route("/authorize", get(authorize))
         .route("/login", post(login))
+        .route("/sso/callback/{ticket}", get(sso_callback))
+        .route("/sso/finish", post(sso_finish))
         .route("/token", post(token))
         .route("/mcp", any(mcp))
         .layer(axum::middleware::map_response(
@@ -185,10 +191,15 @@ fn router(app: App) -> Router {
                 response
             },
         ))
-        // 쿼리에는 code·state 가 들어 있어 경로와 상태 코드만 남깁니다.
+        // 쿼리에는 code·state·sToken 이 들어 있어 경로와 상태 코드만 남깁니다.
         .layer(axum::middleware::from_fn(
             |request: Request, next: axum::middleware::Next| async move {
-                let (method, path) = (request.method().clone(), request.uri().path().to_owned());
+                let (method, mut path) =
+                    (request.method().clone(), request.uri().path().to_owned());
+                // 경로의 1회용 티켓은 남기지 않습니다.
+                if path.starts_with("/sso/callback/") {
+                    path = "/sso/callback/…".into();
+                }
                 let response = next.run(request).await;
                 eprintln!("{method} {path} -> {}", response.status().as_u16());
                 response
@@ -311,7 +322,8 @@ async fn authorize(
     }
     let ticket = secret();
     data.logins.insert(ticket.clone(), Expiring::new(req, TTL));
-    Ok(Html(crate::page::login(&ticket)))
+    let sso_url = smartid_url(&app, &ticket);
+    Ok(Html(crate::page::login(&ticket, &sso_url)))
 }
 
 #[derive(Deserialize)]
@@ -378,6 +390,172 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
         Ok(Ok(server)) => server,
         _ => return Ok((StatusCode::UNAUTHORIZED, Html(crate::page::message("로그인 실패", "계정 정보를 확인한 뒤 앱에서 연결을 처음부터 다시 시작하세요. 여러 번 틀리면 학교 계정이 잠길 수 있습니다."))).into_response()),
     };
+    issue_code(&app, auth, server).await
+}
+
+/// SmartID 로그인 화면 주소. 로그인이 끝나면 SmartID 가 `apiReturnUrl` 뒤에 `?sToken=…&sIdno=학번` 을 붙여 돌려보냅니다.
+fn smartid_url(app: &App, ticket: &str) -> String {
+    let callback = format!("{}/sso/callback/{ticket}", app.base);
+    let encoded: String = url::form_urlencoded::byte_serialize(callback.as_bytes()).collect();
+    format!("{SMARTID_LOGIN}?apiReturnUrl={encoded}")
+}
+
+#[derive(Deserialize)]
+struct SsoReturn {
+    #[serde(rename = "sToken")]
+    token: Option<String>,
+    #[serde(rename = "sIdno")]
+    id: Option<String>,
+}
+
+fn page(status: StatusCode, title: &str, detail: &str) -> Response {
+    (status, Html(crate::page::message(title, detail))).into_response()
+}
+
+/// SmartID 에서 돌아오는 곳. 비밀번호는 학교 화면에만 입력되고, 이 서버는 학교가 발급한 토큰만 받습니다.
+async fn sso_callback(
+    State(app): State<App>,
+    Path(ticket): Path<String>,
+    Query(ret): Query<SsoReturn>,
+) -> Result<Response, HttpError> {
+    let auth = {
+        let mut data = app.data.lock().await;
+        data.prune();
+        if data.attempts.len() >= 10 || data.sso_pending.len() >= 64 {
+            return Err(error(
+                StatusCode::TOO_MANY_REQUESTS,
+                "temporarily_unavailable",
+            ));
+        }
+        let Some(auth) = data.logins.remove(&ticket) else {
+            return Ok(page(
+                StatusCode::BAD_REQUEST,
+                "연결 시간이 지났습니다",
+                "로그인 화면은 5분 동안 한 번만 쓸 수 있습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
+            ));
+        };
+        data.attempts.push(Instant::now());
+        auth.value
+    };
+    let (Some(token), Some(id)) = (
+        ret.token.filter(|t| !t.is_empty() && t.len() <= 4096),
+        ret.id.map(|i| i.trim().to_string()),
+    ) else {
+        return Ok(page(
+            StatusCode::BAD_REQUEST,
+            "학교 로그인이 끝나지 않았습니다",
+            "SmartID 에서 로그인 정보가 돌아오지 않았습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
+        ));
+    };
+    if !app.allowed.contains(&id) {
+        return Ok(page(
+            StatusCode::FORBIDDEN,
+            "허용되지 않은 학번",
+            "이 서버를 쓸 수 있도록 등록된 학번이 아닙니다. 서버 운영자에게 학번 등록을 요청하세요. 받은 로그인 토큰은 바로 버렸습니다.",
+        ));
+    }
+    // 토큰이 진짜 학교 토큰이고 그 학번의 것인지 u-saint 세션을 실제로 열어 확인합니다.
+    let verified = tokio::time::timeout(
+        Duration::from_secs(30),
+        rusaint::USaintSession::with_token(&id, &token),
+    )
+    .await;
+    if !matches!(verified, Ok(Ok(_))) {
+        return Ok(page(
+            StatusCode::UNAUTHORIZED,
+            "학교 로그인을 확인하지 못했습니다",
+            "SmartID 가 준 토큰으로 u-saint 에 들어가지 못했습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
+        ));
+    }
+    let sso = rusaint_sso::SsoCredentials::from_token(id.clone(), token);
+    let next = secret();
+    app.data
+        .lock()
+        .await
+        .sso_pending
+        .insert(next.clone(), Expiring::new((auth, sso), TTL));
+    Ok(Html(crate::page::library_step(&next, &id, None)).into_response())
+}
+
+#[derive(Deserialize)]
+struct Finish {
+    ticket: String,
+    #[serde(default)]
+    library_id: String,
+    #[serde(default)]
+    library_password: String,
+}
+
+/// SSO 다음 단계: 도서관 계정(선택)을 받고 연결을 마칩니다. 도서관은 SSO 가 없어 비밀번호를 받아야 합니다.
+async fn sso_finish(
+    State(app): State<App>,
+    Form(req): Form<Finish>,
+) -> Result<Response, HttpError> {
+    let (auth, sso) = {
+        let mut data = app.data.lock().await;
+        data.prune();
+        if data.attempts.len() >= 10 || data.refreshes.len() + data.codes.len() >= 128 {
+            return Err(error(
+                StatusCode::TOO_MANY_REQUESTS,
+                "temporarily_unavailable",
+            ));
+        }
+        data.sso_pending
+            .remove(&req.ticket)
+            .ok_or_else(invalid)?
+            .value
+    };
+    if req.library_id.len() > 128
+        || req.library_password.len() > 1024
+        || req.library_id.trim().is_empty() != req.library_password.is_empty()
+    {
+        return Err(invalid());
+    }
+    let library = if req.library_id.trim().is_empty() {
+        None
+    } else {
+        app.data.lock().await.attempts.push(Instant::now());
+        let login = async {
+            let client = Arc::new(
+                rusaint_library::LibraryClient::new(req.library_id.trim(), req.library_password)
+                    .map_err(|_| ())?,
+            );
+            client.login().await.map_err(|_| ())?;
+            Ok::<_, ()>(client)
+        };
+        match tokio::time::timeout(Duration::from_secs(60), login).await {
+            Ok(Ok(client)) => Some(client),
+            _ => {
+                // 통합 로그인은 이미 끝났으니 도서관만 다시 입력하거나 건너뛸 수 있게 합니다.
+                let id = sso.student_id().to_string();
+                let next = secret();
+                app.data
+                    .lock()
+                    .await
+                    .sso_pending
+                    .insert(next.clone(), Expiring::new((auth, sso), TTL));
+                return Ok((
+                    StatusCode::UNAUTHORIZED,
+                    Html(crate::page::library_step(
+                        &next,
+                        &id,
+                        Some("도서관 로그인에 실패했습니다. 아이디·비밀번호를 확인하거나 비워 두고 건너뛰세요."),
+                    )),
+                )
+                    .into_response());
+            }
+        }
+    };
+    let server = SsuServer::authenticated(sso, library).map_err(|_| invalid())?;
+    issue_code(&app, auth, server).await
+}
+
+/// 로그인을 마친 서버를 인증 코드에 묶고 앱의 콜백으로 돌려보냅니다.
+async fn issue_code(
+    app: &App,
+    auth: Authorization,
+    server: SsuServer,
+) -> Result<Response, HttpError> {
     let code = secret();
     let mut redirect = Url::parse(&auth.redirect_uri).map_err(|_| invalid())?;
     redirect
@@ -588,6 +766,101 @@ mod tests {
         // 거부돼도 티켓은 다시 쓸 수 없다
         assert!(app.data.lock().await.logins.is_empty());
     }
+    #[test]
+    fn smartid_returns_to_the_ticket_callback() {
+        let url = smartid_url(&app(), "abc123");
+        assert_eq!(
+            url,
+            "https://smartid.ssu.ac.kr/Symtra_sso/smln.asp?apiReturnUrl=https%3A%2F%2Fmcp.example.com%2Fsso%2Fcallback%2Fabc123"
+        );
+    }
+
+    async fn callback(app: &App, ticket: &str, token: Option<&str>, id: Option<&str>) -> Response {
+        sso_callback(
+            State(app.clone()),
+            Path(ticket.into()),
+            Query(SsoReturn {
+                token: token.map(Into::into),
+                id: id.map(Into::into),
+            }),
+        )
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn sso_callback_needs_a_live_ticket_and_an_allowed_id() {
+        let app = app();
+        // 모르는 티켓
+        let r = callback(&app, "nope", Some("t"), Some("20240000")).await;
+        assert_eq!(r.status(), StatusCode::BAD_REQUEST);
+
+        // 허용 목록 밖 학번: u-saint 로 확인하지도 않고 거부, 티켓은 소모
+        app.data
+            .lock()
+            .await
+            .logins
+            .insert("ticket".into(), Expiring::new(auth(), TTL));
+        let r = callback(&app, "ticket", Some("t"), Some("19990000")).await;
+        assert_eq!(r.status(), StatusCode::FORBIDDEN);
+        assert!(app.data.lock().await.logins.is_empty());
+        assert!(app.data.lock().await.sso_pending.is_empty());
+
+        // SmartID 가 토큰 없이 돌아온 경우
+        app.data
+            .lock()
+            .await
+            .logins
+            .insert("ticket".into(), Expiring::new(auth(), TTL));
+        let r = callback(&app, "ticket", None, Some("20240000")).await;
+        assert_eq!(r.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn sso_finish_without_library_issues_a_code() {
+        let app = app();
+        app.data.lock().await.sso_pending.insert(
+            "next".into(),
+            Expiring::new(
+                (
+                    auth(),
+                    rusaint_sso::SsoCredentials::from_token("20240000", "tok"),
+                ),
+                TTL,
+            ),
+        );
+        let r = sso_finish(
+            State(app.clone()),
+            Form(Finish {
+                ticket: "next".into(),
+                library_id: "".into(),
+                library_password: "".into(),
+            }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(r.status(), StatusCode::SEE_OTHER);
+        let location = r.headers()[header::LOCATION].to_str().unwrap();
+        assert!(location.starts_with(CALLBACK), "{location}");
+        assert!(location.contains("state=opaque-state"));
+        let data = app.data.lock().await;
+        assert!(data.sso_pending.is_empty());
+        assert_eq!(data.codes.len(), 1);
+        drop(data);
+
+        // 같은 티켓은 다시 쓸 수 없다
+        let again = sso_finish(
+            State(app),
+            Form(Finish {
+                ticket: "next".into(),
+                library_id: "".into(),
+                library_password: "".into(),
+            }),
+        )
+        .await;
+        assert!(again.is_err());
+    }
+
     fn auth() -> Authorization {
         Authorization {
             client_id: "client".into(),
