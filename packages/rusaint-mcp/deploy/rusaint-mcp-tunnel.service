@@ -1,0 +1,14 @@
+[Unit]
+Description=Cloudflare quick tunnel for rusaint-mcp
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+DynamicUser=yes
+# /quicktunnel 이 터널 주소를 알려 줍니다(start.sh 가 읽음). 재시작할 때마다 주소가 바뀝니다.
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 --url http://127.0.0.1:3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

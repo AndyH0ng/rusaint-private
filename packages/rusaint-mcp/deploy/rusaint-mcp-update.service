@@ -1,0 +1,9 @@
+[Unit]
+Description=Update rusaint-mcp from GitHub Releases
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+StateDirectory=rusaint-mcp-update
+ExecStart=/usr/local/lib/rusaint-mcp/update.sh

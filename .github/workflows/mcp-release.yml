@@ -1,0 +1,52 @@
+name: MCP Server Release
+
+# mcp-v* 태그를 달면 리눅스용 rusaint-mcp 를 빌드해 GitHub Release 에 올립니다.
+# 서버(GCP VM)는 이 릴리스를 주기적으로 확인해 새 버전으로 교체합니다.
+on:
+  push:
+    tags: ["mcp-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "릴리스로 만들 기존 태그 (예: mcp-v2026.11.05)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build rusaint-mcp (linux x86_64)
+    # glibc 2.35: 서버의 Debian 12 (glibc 2.36) 에서 실행됩니다.
+    runs-on: ubuntu-22.04
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Retrieve cache
+        uses: Leafwing-Studios/cargo-cache@v2
+      - name: Test
+        run: cargo test -p rusaint-mcp -p rusaint-regulation
+      - name: Build
+        run: cargo build --release -p rusaint-mcp
+      - name: Package
+        run: |
+          mkdir dist
+          cp target/release/rusaint-mcp dist/rusaint-mcp-x86_64-linux
+          cd dist && sha256sum rusaint-mcp-x86_64-linux > rusaint-mcp-x86_64-linux.sha256
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --title "rusaint-mcp $TAG" \
+            --notes "rusaint-mcp 서버 바이너리 ($(git rev-parse --short HEAD))" \
+            --latest=false

@@ -66,3 +66,24 @@ Cloudflare quick tunnel을 거쳐 Claude iPhone 앱에서 연결과 도구 호�
 
 참고: [Claude 원격 커넥터 안내](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp),
 [MCP 인증 명세](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization).
+
+## 서버 배포 (GitHub Release → VM 자동 교체)
+
+`mcp-v*` 태그를 push 하면 `.github/workflows/mcp-release.yml` 이 리눅스용 바이너리를 빌드해
+GitHub Release(`--latest=false`)에 올립니다. 서버는 `deploy/` 의 systemd 유닛으로 실행합니다.
+
+```sh
+git tag mcp-v2026.11.05 && git push origin mcp-v2026.11.05
+```
+
+| 파일 | 설치 위치 | 역할 |
+|---|---|---|
+| `rusaint-mcp-tunnel.service` | `/etc/systemd/system/` | Cloudflare quick tunnel (`--metrics 127.0.0.1:20241`) |
+| `rusaint-mcp.service` + `start.sh` | `/etc/systemd/system/`, `/usr/local/lib/rusaint-mcp/` | 서버. `RUSAINT_MCP_PUBLIC_URL` 이 없으면 터널 주소를 씁니다 |
+| `rusaint-mcp-update.{service,timer}` + `update.sh` | 위와 같음 | 5분마다 최신 `mcp-v*` 릴리스를 확인하고 sha256 검증 후 교체 |
+
+- `/etc/rusaint-mcp/env`: `RUSAINT_ALLOWED_IDS=…` (고정 도메인이면 `RUSAINT_MCP_PUBLIC_URL=…` 도)
+- `/etc/rusaint-mcp/github-token`: 이 레포 Contents 읽기 전용 fine-grained token (root 600)
+- 서버가 재시작되면(배포, 재부팅) 메모리의 계정이 사라지므로 커넥터를 다시 연결해야 합니다.
+  quick tunnel 은 터널이 다시 뜰 때만 주소가 바뀌고, 배포로는 바뀌지 않습니다.
+- VM 에는 `cloudflared`, `jq`, `curl` 이 필요합니다.

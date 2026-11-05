@@ -1,0 +1,23 @@
+[Unit]
+Description=rusaint MCP server (remote connector)
+After=network-online.target rusaint-mcp-tunnel.service
+Wants=network-online.target
+# 터널이 다시 뜨면 주소가 바뀌므로 서버도 같이 다시 시작합니다.
+Requires=rusaint-mcp-tunnel.service
+PartOf=rusaint-mcp-tunnel.service
+
+[Service]
+DynamicUser=yes
+# RUSAINT_ALLOWED_IDS, (고정 도메인이면) RUSAINT_MCP_PUBLIC_URL
+EnvironmentFile=/etc/rusaint-mcp/env
+Environment=RUSAINT_MCP_BIND=127.0.0.1:3000
+ExecStart=/usr/local/lib/rusaint-mcp/start.sh
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
