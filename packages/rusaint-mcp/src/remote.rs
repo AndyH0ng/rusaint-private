@@ -373,8 +373,8 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
         return Ok((
             StatusCode::FORBIDDEN,
             Html(crate::page::message(
-                "허용되지 않은 학번",
-                "이 서버에 로그인할 수 있도록 등록된 학번이 아닙니다. 학교 서버에는 아무것도 보내지 않았습니다.",
+                "운영자에게 등록을 요청해 주세요",
+                "비밀번호 연결은 등록한 학번만 쓸 수 있어요. 학교 로그인으로 연결하면 등록 없이 쓸 수 있어요. 학교 서버에는 아무것도 보내지 않았어요.",
             )),
         )
             .into_response());
@@ -396,7 +396,14 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
     };
     let server = match tokio::time::timeout(Duration::from_secs(60), verified).await {
         Ok(Ok(server)) => server,
-        _ => return Ok((StatusCode::UNAUTHORIZED, Html(crate::page::message("로그인 실패", "계정 정보를 확인한 뒤 앱에서 연결을 처음부터 다시 시작하세요. 여러 번 틀리면 학교 계정이 잠길 수 있습니다."))).into_response()),
+        _ => return Ok((
+            StatusCode::UNAUTHORIZED,
+            Html(crate::page::message(
+                "학번이나 비밀번호를 확인해 주세요",
+                "Claude에서 연결을 다시 눌러 주세요. 여러 번 틀리면 학교 계정이 잠길 수 있어요.",
+            )),
+        )
+            .into_response()),
     };
     issue_code(&app, auth, server).await
 }
@@ -426,6 +433,17 @@ async fn sso_callback(
     Path(ticket): Path<String>,
     Query(ret): Query<SsoReturn>,
 ) -> Result<Response, HttpError> {
+    // SmartID 는 돌아오는 요청을 두 번 보내기도 합니다. 토큰이 없는 요청은 티켓을 쓰지 않고 무시합니다.
+    let (Some(token), Some(id)) = (
+        ret.token.filter(|t| !t.is_empty() && t.len() <= 4096),
+        ret.id.map(|i| i.trim().to_string()),
+    ) else {
+        return Ok(page(
+            StatusCode::BAD_REQUEST,
+            "학교 로그인을 다시 해 주세요",
+            "학교에서 로그인 정보를 받지 못했어요. Claude에서 연결을 다시 눌러 주세요.",
+        ));
+    };
     let auth = {
         let mut data = app.data.lock().await;
         data.prune();
@@ -438,30 +456,20 @@ async fn sso_callback(
         let Some(auth) = data.logins.remove(&ticket) else {
             return Ok(page(
                 StatusCode::BAD_REQUEST,
-                "연결 시간이 지났습니다",
-                "로그인 화면은 5분 동안 한 번만 쓸 수 있습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
+                "처음부터 다시 연결해 주세요",
+                "보안을 위해 로그인 화면은 5분만 열려 있어요. Claude에서 연결을 다시 눌러 주세요.",
             ));
         };
         data.attempts.push(Instant::now());
         auth.value
-    };
-    let (Some(token), Some(id)) = (
-        ret.token.filter(|t| !t.is_empty() && t.len() <= 4096),
-        ret.id.map(|i| i.trim().to_string()),
-    ) else {
-        return Ok(page(
-            StatusCode::BAD_REQUEST,
-            "학교 로그인이 끝나지 않았습니다",
-            "SmartID 에서 로그인 정보가 돌아오지 않았습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
-        ));
     };
     let id_shape =
         !id.is_empty() && id.len() <= 20 && id.chars().all(|c| c.is_ascii_alphanumeric());
     if !id_shape || !(app.sso_open || app.allowed.contains(&id)) {
         return Ok(page(
             StatusCode::FORBIDDEN,
-            "허용되지 않은 학번",
-            "이 서버를 쓸 수 있도록 등록된 학번이 아닙니다. 서버 운영자에게 학번 등록을 요청하세요. 받은 로그인 토큰은 바로 버렸습니다.",
+            "운영자에게 등록을 요청해 주세요",
+            "이 서버는 등록한 학번만 쓸 수 있어요. 받은 로그인 정보는 바로 지웠어요.",
         ));
     }
     // 토큰이 진짜 학교 토큰이고 그 학번의 것인지 u-saint 세션을 실제로 열어 확인합니다.
@@ -473,8 +481,8 @@ async fn sso_callback(
     if !matches!(verified, Ok(Ok(_))) {
         return Ok(page(
             StatusCode::UNAUTHORIZED,
-            "학교 로그인을 확인하지 못했습니다",
-            "SmartID 가 준 토큰으로 u-saint 에 들어가지 못했습니다. 앱에서 연결을 처음부터 다시 시작하세요.",
+            "학교 로그인을 다시 해 주세요",
+            "학교 로그인이 확인되지 않았어요. Claude에서 연결을 다시 눌러 주세요.",
         ));
     }
     let sso = rusaint_sso::SsoCredentials::from_token(id.clone(), token);
@@ -484,12 +492,15 @@ async fn sso_callback(
         .await
         .sso_pending
         .insert(next.clone(), Expiring::new((auth, sso), TTL));
-    Ok(Html(crate::page::library_step(&next, &id, None)).into_response())
+    Ok(Html(crate::page::library_step(&next, None)).into_response())
 }
 
 #[derive(Deserialize)]
 struct Finish {
     ticket: String,
+    /// "건너뛰기" 버튼. 입력한 도서관 계정은 무시합니다.
+    #[serde(default)]
+    skip: Option<String>,
     #[serde(default)]
     library_id: String,
     #[serde(default)]
@@ -515,19 +526,24 @@ async fn sso_finish(
             .ok_or_else(invalid)?
             .value
     };
-    if req.library_id.len() > 128
-        || req.library_password.len() > 1024
-        || req.library_id.trim().is_empty() != req.library_password.is_empty()
+    let (library_id, library_password) = if req.skip.is_some() {
+        (String::new(), String::new())
+    } else {
+        (req.library_id, req.library_password)
+    };
+    if library_id.len() > 128
+        || library_password.len() > 1024
+        || library_id.trim().is_empty() != library_password.is_empty()
     {
         return Err(invalid());
     }
-    let library = if req.library_id.trim().is_empty() {
+    let library = if library_id.trim().is_empty() {
         None
     } else {
         app.data.lock().await.attempts.push(Instant::now());
         let login = async {
             let client = Arc::new(
-                rusaint_library::LibraryClient::new(req.library_id.trim(), req.library_password)
+                rusaint_library::LibraryClient::new(library_id.trim(), library_password)
                     .map_err(|_| ())?,
             );
             client.login().await.map_err(|_| ())?;
@@ -537,7 +553,6 @@ async fn sso_finish(
             Ok(Ok(client)) => Some(client),
             _ => {
                 // 통합 로그인은 이미 끝났으니 도서관만 다시 입력하거나 건너뛸 수 있게 합니다.
-                let id = sso.student_id().to_string();
                 let next = secret();
                 app.data
                     .lock()
@@ -548,8 +563,7 @@ async fn sso_finish(
                     StatusCode::UNAUTHORIZED,
                     Html(crate::page::library_step(
                         &next,
-                        &id,
-                        Some("도서관 로그인에 실패했습니다. 아이디·비밀번호를 확인하거나 비워 두고 건너뛰세요."),
+                        Some("다시 입력하거나, 도서관 없이 쓰려면 건너뛰기를 눌러 주세요."),
                     )),
                 )
                     .into_response());
@@ -800,6 +814,36 @@ mod tests {
         .unwrap()
     }
 
+    #[test]
+    #[ignore = "RUSAINT_PAGE_PREVIEW=<dir> 로 미리보기 HTML 을 만듭니다"]
+    fn write_page_previews() {
+        let dir = std::path::PathBuf::from(std::env::var("RUSAINT_PAGE_PREVIEW").unwrap());
+        let pages = [
+            (
+                "1-login.html",
+                crate::page::login("t", &smartid_url(&app(), "t")),
+            ),
+            ("2-library.html", crate::page::library_step("t", None)),
+            (
+                "3-library-error.html",
+                crate::page::library_step(
+                    "t",
+                    Some("다시 입력하거나, 도서관 없이 쓰려면 건너뛰기를 눌러 주세요."),
+                ),
+            ),
+            (
+                "4-expired.html",
+                crate::page::message(
+                    "처음부터 다시 연결해 주세요",
+                    "보안을 위해 로그인 화면은 5분만 열려 있어요. Claude에서 연결을 다시 눌러 주세요.",
+                ),
+            ),
+        ];
+        for (name, html) in pages {
+            std::fs::write(dir.join(name), html).unwrap();
+        }
+    }
+
     #[tokio::test]
     async fn sso_callback_needs_a_live_ticket_and_an_allowed_id() {
         let app = app();
@@ -826,6 +870,8 @@ mod tests {
             .insert("ticket".into(), Expiring::new(auth(), TTL));
         let r = callback(&app, "ticket", None, Some("20240000")).await;
         assert_eq!(r.status(), StatusCode::BAD_REQUEST);
+        // 토큰 없는 중복 요청은 티켓을 쓰지 않는다
+        assert!(app.data.lock().await.logins.contains_key("ticket"));
     }
 
     #[tokio::test]
@@ -880,6 +926,7 @@ mod tests {
             State(app.clone()),
             Form(Finish {
                 ticket: "next".into(),
+                skip: None,
                 library_id: "".into(),
                 library_password: "".into(),
             }),
@@ -900,6 +947,7 @@ mod tests {
             State(app),
             Form(Finish {
                 ticket: "next".into(),
+                skip: None,
                 library_id: "".into(),
                 library_password: "".into(),
             }),
