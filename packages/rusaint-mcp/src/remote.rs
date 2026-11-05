@@ -492,7 +492,7 @@ async fn sso_callback(
         .await
         .sso_pending
         .insert(next.clone(), Expiring::new((auth, sso), TTL));
-    Ok(Html(crate::page::library_step(&next, None)).into_response())
+    Ok(Html(crate::page::library_step(&next, false)).into_response())
 }
 
 #[derive(Deserialize)]
@@ -561,10 +561,7 @@ async fn sso_finish(
                     .insert(next.clone(), Expiring::new((auth, sso), TTL));
                 return Ok((
                     StatusCode::UNAUTHORIZED,
-                    Html(crate::page::library_step(
-                        &next,
-                        Some("다시 입력하거나, 도서관 없이 쓰려면 건너뛰기를 눌러 주세요."),
-                    )),
+                    Html(crate::page::library_step(&next, true)),
                 )
                     .into_response());
             }
@@ -823,14 +820,8 @@ mod tests {
                 "1-login.html",
                 crate::page::login("t", &smartid_url(&app(), "t")),
             ),
-            ("2-library.html", crate::page::library_step("t", None)),
-            (
-                "3-library-error.html",
-                crate::page::library_step(
-                    "t",
-                    Some("다시 입력하거나, 도서관 없이 쓰려면 건너뛰기를 눌러 주세요."),
-                ),
-            ),
+            ("2-library.html", crate::page::library_step("t", false)),
+            ("3-library-error.html", crate::page::library_step("t", true)),
             (
                 "4-expired.html",
                 crate::page::message(

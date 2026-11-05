@@ -38,6 +38,7 @@ button:disabled{opacity:.6;cursor:progress}
 button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent)}
 .spin{display:none;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite}
 button:disabled .spin{display:inline-block}
+button:disabled .spin+span{display:none}
 @keyframes s{to{transform:rotate(360deg)}}
 .footer{padding:12px 24px;border-top:1px solid var(--border);color:var(--muted-foreground);font-size:12px}
 .alert{display:grid;gap:4px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius)}
@@ -60,7 +61,7 @@ h1 small{font-size:14px;font-weight:500;color:var(--muted-foreground)}
 
 /// 제출 중 누른 버튼을 잠가 두 번 보내지 않게 합니다(로그인 화면 티켓은 한 번만 쓸 수 있음).
 /// 폼 값이 만들어진 뒤에 잠그도록 한 박자 늦춥니다(잠근 버튼의 name 은 전송되지 않음).
-const SCRIPT: &str = r#"document.querySelectorAll("form").forEach(function(f){f.addEventListener("submit",function(e){var b=e.submitter||f.querySelector("button");setTimeout(function(){b.disabled=true;b.lastChild.textContent="확인하고 있어요…"},0)})})"#;
+const SCRIPT: &str = r#"document.querySelectorAll("form").forEach(function(f){f.addEventListener("submit",function(e){var b=e.submitter||f.querySelector("button");setTimeout(function(){b.disabled=true},0)})})"#;
 
 fn hash(source: &str) -> String {
     format!(
@@ -110,7 +111,7 @@ pub fn login(ticket: &str, sso_url: &str) -> String {
 {SCOPE}
 <div class="safe">{LOCK}<div><strong>비밀번호는 이 서버로 오지 않아요</strong><p>학교는 이 서버에 로그인 결과만 보내기에, 이 서버 어디에도 비밀번호가 남지 않아요.</p></div></div>
 <a class="button" href="{sso_url}">숭실대학교 SSO로 로그인</a>
-<details><summary><span>운영자 전용 <small>비밀번호로 연결</small></span></summary>
+<details><summary><span>비밀번호로 연결</span></summary>
 <form method="post" action="/login">
 <p class="hint">이 서버에 비밀번호를 저장해서, 세션이 끊겨도 서버가 갱신해요. 덕분에 매일 로그인하지 않아도 돼요.<br>등록한 학번만 쓸 수 있어요.</p>
 <input type="hidden" name="ticket" value="{ticket}">
@@ -128,22 +129,19 @@ pub fn login(ticket: &str, sso_url: &str) -> String {
 }
 
 /// SmartID 로그인 뒤 도서관 계정(선택)을 받는 화면
-pub fn library_step(ticket: &str, error: Option<&str>) -> String {
-    let alert = error
-        .map(|e| {
-            format!(
-                r#"<div class="alert error"><strong>도서관 아이디나 비밀번호를 확인해 주세요</strong><p>{}</p></div>"#,
-                escape(e)
-            )
-        })
-        .unwrap_or_default();
+pub fn library_step(ticket: &str, failed: bool) -> String {
+    let alert = if failed {
+        r#"<div class="alert error"><strong>도서관 아이디나 비밀번호를 확인해 주세요</strong></div>"#
+    } else {
+        ""
+    };
     document(
-        "도서관도 쓸 건가요?",
+        "도서관도 연결할까요?",
         &format!(
             r#"<main class="card">
 <div class="header">
 <span class="badge"><i></i>SSO 로그인 완료</span>
-<h1>도서관도 쓸 건가요?</h1>
+<h1>도서관도 연결할까요?</h1>
 <p class="desc">열람실 자리와 스터디룸을 예약하려면 도서관 로그인이 필요해요.</p>
 </div>
 <form class="content" method="post" action="/sso/finish">
