@@ -375,7 +375,12 @@ pub struct SsuServer {
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
     remote: bool,
+    /// 이 연결의 모든 복사본이 사라지면 keep-alive 도 멈추도록 약한 참조로만 봅니다.
+    alive: Arc<()>,
 }
+
+/// SSO(토큰) 연결의 학교 세션을 확인하는 간격
+const KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 
 impl SsuServer {
     pub fn new() -> Result<Self, String> {
@@ -392,6 +397,7 @@ impl SsuServer {
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
             remote: false,
+            alive: Arc::new(()),
         })
     }
 
@@ -407,6 +413,97 @@ impl SsuServer {
             let _ = server.library.set(library);
         }
         Ok(server)
+    }
+
+    /// SSO 토큰으로 연결한 경우 u-saint·LMS·SSU-PATH 세션을 미리 열고 10분마다 다시 로그인하지 않고 확인합니다.
+    /// 비밀번호를 모르는 연결이라 학교 토큰(약 하루)이 끝난 뒤에는 열어 둔 세션만 쓸 수 있으므로, 세션을 살려 두고
+    /// 서비스별로 로그인 후 몇 시간 만에 끊기는지 로그에 남깁니다(학번은 남기지 않음).
+    pub fn spawn_keepalive(&self) {
+        let Some(sso) = self.sso.get().cloned() else {
+            return;
+        };
+        if sso.token_expires_in().is_none() {
+            return;
+        }
+        let alive = Arc::downgrade(&self.alive);
+        let (usaint, lms, path) = (self.usaint.clone(), self.lms.clone(), self.path.clone());
+        let tag: String = uuid::Uuid::new_v4().simple().to_string()[..6].to_string();
+        tokio::spawn(async move {
+            let started = std::time::Instant::now();
+            let usaint = usaint
+                .get_or_init(|| async { Arc::new(Usaint::new(sso.clone())) })
+                .await
+                .clone();
+            let lms = lms
+                .get_or_try_init(|| async { LmsClient::new(sso.clone()).map(Arc::new) })
+                .await
+                .ok()
+                .cloned();
+            let path = path
+                .get_or_init(|| async { Arc::new(PathClient::new(sso.clone())) })
+                .await
+                .clone();
+
+            const NAMES: [&str; 3] = ["u-saint", "LMS", "SSU-PATH"];
+            let mut state = [
+                usaint.app::<StudentInformationApplication>().await.is_ok(),
+                match &lms {
+                    Some(l) => l.login().await.is_ok(),
+                    None => false,
+                },
+                path.profile().await.is_ok(),
+            ];
+            let status = |state: &[bool; 3]| {
+                NAMES
+                    .iter()
+                    .zip(state)
+                    .map(|(n, s)| format!("{n}={}", if *s { "ok" } else { "-" }))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            };
+            eprintln!("keepalive {tag}: 시작 {}", status(&state));
+            let mut tick = 0u32;
+            loop {
+                tokio::time::sleep(KEEPALIVE_INTERVAL).await;
+                if alive.upgrade().is_none() {
+                    eprintln!("keepalive {tag}: 연결이 끝나 멈춤");
+                    break;
+                }
+                tick += 1;
+                let now = [
+                    usaint.probe::<StudentInformationApplication>().await,
+                    match &lms {
+                        Some(l) => l.probe().await,
+                        None => None,
+                    },
+                    path.probe().await,
+                ];
+                let hours = started.elapsed().as_secs_f64() / 3600.0;
+                let sso_left = sso
+                    .token_expires_in()
+                    .map_or(0.0, |d| d.as_secs_f64() / 3600.0);
+                for (i, now) in now.into_iter().enumerate() {
+                    let Some(now) = now else { continue };
+                    if state[i] != now {
+                        eprintln!(
+                            "keepalive {tag}: {} 세션 {} (로그인 후 {hours:.1}h, SSO 토큰 남은 시간 {sso_left:.1}h)",
+                            NAMES[i],
+                            if now { "다시 열림" } else { "끊김" }
+                        );
+                    }
+                    state[i] = now;
+                }
+                if tick.is_multiple_of(6) {
+                    eprintln!("keepalive {tag}: {hours:.1}h {}", status(&state));
+                }
+                if state.iter().all(|s| !s) && sso_left == 0.0 {
+                    eprintln!(
+                        "keepalive {tag}: 모든 세션이 끊기고 SSO 토큰도 만료돼 멈춤 ({hours:.1}h)"
+                    );
+                    break;
+                }
+            }
+        });
     }
 
     /// 도서관 클라이언트는 처음 필요할 때 Keychain 에서 계정을 읽어 만듭니다.

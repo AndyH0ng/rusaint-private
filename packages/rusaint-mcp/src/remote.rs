@@ -557,6 +557,7 @@ async fn sso_finish(
         }
     };
     let server = SsuServer::authenticated(sso, library).map_err(|_| invalid())?;
+    server.spawn_keepalive();
     issue_code(&app, auth, server).await
 }
 

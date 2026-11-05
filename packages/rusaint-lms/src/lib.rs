@@ -241,6 +241,39 @@ impl LmsClient {
         Ok(String::new())
     }
 
+    /// 다시 로그인하지 않고 지금 세션의 토큰이 아직 받아들여지는지 봅니다. 세션이 없으면 `None`.
+    /// 세션 수명을 재고 세션을 살려 두는 데(keep-alive) 씁니다. 거부되면 세션을 버려 다음 호출이 새로 로그인하게 합니다.
+    pub async fn probe(&self) -> Option<bool> {
+        let token = self.session.lock().await.as_ref()?.token.clone();
+        let path = format!("/learningx/api/v1/users/{}/terms", self.student_id());
+        let alive = match self
+            .api
+            .get(format!("{CANVAS_BASE_URL}{path}"))
+            .header(AUTHORIZATION, format!("Bearer {token}"))
+            .send()
+            .await
+        {
+            Ok(r) => r.status().is_success(),
+            Err(_) => return None,
+        };
+        if !alive {
+            let mut session = self.session.lock().await;
+            if session.as_ref().is_some_and(|s| s.token == token) {
+                *session = None;
+            }
+        }
+        Some(alive)
+    }
+
+    /// 지금 세션을 받은 지 얼마나 지났는지
+    pub async fn session_age(&self) -> Option<std::time::Duration> {
+        self.session
+            .lock()
+            .await
+            .as_ref()
+            .map(|s| s.issued.elapsed())
+    }
+
     /// 유효한 세션의 (토큰, Canvas 세션 클라이언트)를 돌려줍니다.
     async fn session(&self, force: bool) -> Result<(String, Option<reqwest::Client>), LmsError> {
         let mut session = self.session.lock().await;
@@ -248,7 +281,13 @@ impl LmsClient {
             .as_ref()
             .is_some_and(|s| s.issued.elapsed() < TOKEN_LIFETIME);
         if force || !fresh {
-            *session = Some(self.open_session().await?);
+            match self.open_session().await {
+                Ok(s) => *session = Some(s),
+                // SSO 토큰으로만 연결해 다시 로그인할 수 없을 때는, 시간이 지났어도 아직 거부되지 않은 세션을 계속 씁니다.
+                // 실제로 만료됐다면 401 이 와서 force 로 다시 들어옵니다.
+                Err(_) if !force && session.is_some() => {}
+                Err(e) => return Err(e),
+            }
         }
         let s = session.as_ref().expect("set above");
         Ok((s.token.clone(), s.canvas.clone()))

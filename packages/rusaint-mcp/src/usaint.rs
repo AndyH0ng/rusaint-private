@@ -38,6 +38,24 @@ impl Usaint {
         Ok(fresh)
     }
 
+    /// 다시 로그인하지 않고 지금 세션으로 u-saint 앱이 열리는지 봅니다. 세션이 없으면 `None`.
+    /// 세션 수명을 재고 세션을 살려 두는 데(keep-alive) 씁니다. 끊겼으면 세션을 버립니다.
+    pub async fn probe<T: USaintApplication>(&self) -> Option<bool> {
+        let session = self.session.lock().await.clone()?;
+        let alive = USaintClientBuilder::new()
+            .session(session.clone())
+            .build_into::<T>()
+            .await
+            .is_ok();
+        if !alive {
+            let mut current = self.session.lock().await;
+            if current.as_ref().is_some_and(|s| Arc::ptr_eq(s, &session)) {
+                *current = None;
+            }
+        }
+        Some(alive)
+    }
+
     /// u-saint 앱을 엽니다. 실패하면 세션이 만료됐을 수 있어 새 세션으로 한 번 다시 엽니다.
     pub async fn app<T: USaintApplication>(&self) -> Result<T, String> {
         let session = self.session(false).await?;

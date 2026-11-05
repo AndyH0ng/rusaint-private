@@ -145,6 +145,20 @@ impl PathClient {
         Ok(http)
     }
 
+    /// 다시 로그인하지 않고 지금 세션이 살아 있는지 봅니다. 세션이 없으면 `None`.
+    /// 세션 수명을 재고 세션을 살려 두는 데(keep-alive) 씁니다. 끊겼으면 세션을 버립니다.
+    pub async fn probe(&self) -> Option<bool> {
+        let http = self.session.lock().await.clone()?;
+        let alive = match http.get(format!("{BASE_URL}/index.do")).send().await {
+            Ok(r) => r.status().is_success() && !is_login_page(r.url()),
+            Err(_) => return None,
+        };
+        if !alive {
+            *self.session.lock().await = None;
+        }
+        Some(alive)
+    }
+
     /// 로그인된 상태로 페이지를 가져옵니다. 세션이 끝나 로그인 화면으로 가면 한 번 다시 로그인합니다.
     async fn page(&self, path: &str, query: &[(&str, String)]) -> Result<String, PathError> {
         for attempt in 0..2 {
