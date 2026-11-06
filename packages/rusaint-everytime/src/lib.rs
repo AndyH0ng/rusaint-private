@@ -8,7 +8,6 @@
 mod html;
 mod model;
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use regex::Regex;
@@ -46,6 +45,8 @@ pub enum EverytimeError {
 /// 에브리타임 클라이언트. 사용자가 넘긴 세션 쿠키는 내부 쿠키 저장소(메모리)에만 보관됩니다.
 pub struct EverytimeClient {
     http: reqwest::Client,
+    /// `etsid=값` 형태의 Cookie 헤더 값
+    cookie: String,
     campus_id: Mutex<Option<i64>>,
     /// 한 번 만료가 확인되면 같은 쿠키로 더 요청하지 않습니다.
     expired: Mutex<bool>,
@@ -80,21 +81,15 @@ impl EverytimeClient {
     /// 브라우저에서 받은 세션 쿠키(`etsid` 값 또는 `etsid=…`)로 클라이언트를 만듭니다. 아직 서버에 확인하지는 않습니다.
     pub fn from_session(cookie: &str) -> Result<Self, EverytimeError> {
         let value = parse_session_cookie(cookie)?;
-        let jar = Arc::new(reqwest::cookie::Jar::default());
-        let url: reqwest::Url = PUBLIC.parse().expect("고정 주소");
-        jar.add_cookie_str(
-            &format!("{SESSION_COOKIE}={value}; Domain=.everytime.kr; Path=/; Secure; HttpOnly"),
-            &url,
-        );
         let http = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
-            .cookie_provider(jar)
             // 리다이렉트를 따라가지 않아야 세션 만료(로그인 화면으로 3xx)를 알아챌 수 있습니다.
             .redirect(reqwest::redirect::Policy::none())
             .user_agent(USER_AGENT)
             .build()?;
         Ok(Self {
             http,
+            cookie: format!("{SESSION_COOKIE}={value}"),
             campus_id: Mutex::new(None),
             expired: Mutex::new(false),
         })
@@ -126,6 +121,7 @@ impl EverytimeClient {
         let res = self
             .http
             .get(format!("{PUBLIC}/lecture/search"))
+            .header(reqwest::header::COOKIE, &self.cookie)
             .header(reqwest::header::REFERER, format!("{PUBLIC}/lecture"))
             .send()
             .await?;
@@ -138,25 +134,23 @@ impl EverytimeClient {
             return Err(self.mark_expired().await);
         }
         let html = res.text().await?;
-        let Some(id) = Self::parse_campus_id(&html) else {
-            // 로그인하지 않은 상태로도 200 을 주는 경우가 있어, 캠퍼스가 없으면 세션이 없는 것으로 봅니다.
-            eprintln!(
-                "everytime campus: 캠퍼스 없음 len={} login_link={}",
-                html.len(),
-                html.contains("account.everytime.kr/login")
-            );
+        let state = PageState::parse(&html);
+        if state.logged == Some(false) {
+            eprintln!("everytime campus: isLogged=false (세션 만료)");
             return Err(self.mark_expired().await);
+        }
+        let Some(id) = state.campus else {
+            eprintln!(
+                "everytime campus: 캠퍼스 없음 len={} logged={:?}",
+                html.len(),
+                state.logged
+            );
+            return Err(EverytimeError::Decode(
+                "현재 캠퍼스를 확인하지 못했어요".into(),
+            ));
         };
         *self.campus_id.lock().await = Some(id);
         Ok(id)
-    }
-
-    fn parse_campus_id(html: &str) -> Option<i64> {
-        let re =
-            Regex::new(r#"(?s)<script[^>]+id="__INITIAL_STATE__"[^>]*>(.*?)</script>"#).ok()?;
-        let json = re.captures(html)?.get(1)?.as_str().trim();
-        let value: Value = serde_json::from_str(json).ok()?;
-        find_campus_id(&value)
     }
 
     /// API(application/x-www-form-urlencoded 전송, JSON 응답)를 호출합니다.
@@ -170,6 +164,7 @@ impl EverytimeClient {
         let res = self
             .http
             .post(format!("{API}{path}"))
+            .header(reqwest::header::COOKIE, &self.cookie)
             .header(reqwest::header::ORIGIN, PUBLIC)
             .header(reqwest::header::REFERER, referer)
             .header(
@@ -192,7 +187,7 @@ impl EverytimeClient {
             return Err(EverytimeError::Decode(format!("HTTP {}", status.as_u16())));
         }
         let text = res.text().await?;
-        serde_json::from_str(&text).map_err(|e| {
+        let value: Value = serde_json::from_str(&text).map_err(|e| {
             eprintln!(
                 "everytime api {path}: JSON 아님 len={} snippet={:?}",
                 text.len(),
@@ -202,7 +197,8 @@ impl EverytimeClient {
                     .collect::<String>()
             );
             EverytimeError::Decode(e.to_string())
-        })
+        })?;
+        unwrap_result(path, value)
     }
 
     /// 강의평이 등록된 과목을 검색합니다. `field` 는 "name"(과목명) 또는 "professor"(교수명)입니다.
@@ -354,6 +350,84 @@ impl EverytimeClient {
     }
 }
 
+/// 강의실 화면의 `__INITIAL_STATE__`(퍼센트 인코딩된 JSON)에서 읽은 값
+#[derive(Debug, Default, PartialEq)]
+struct PageState {
+    logged: Option<bool>,
+    campus: Option<i64>,
+}
+
+impl PageState {
+    fn parse(html: &str) -> Self {
+        let mut state = Self::default();
+        let re = Regex::new(r#"(?s)<script[^>]+id="__INITIAL_STATE__"[^>]*>(.*?)</script>"#)
+            .expect("고정 정규식");
+        if let Some(raw) = re.captures(html).and_then(|c| c.get(1)) {
+            let raw = raw.as_str().trim();
+            let value = serde_json::from_str::<Value>(raw)
+                .ok()
+                .or_else(|| serde_json::from_str::<Value>(&percent_decode(raw)).ok());
+            if let Some(value) = value {
+                state.logged = value.get("isLogged").and_then(Value::as_bool);
+                state.campus = value
+                    .get("campusData")
+                    .and_then(|c| as_i64(c.get("campusId")))
+                    .filter(|id| *id > 0)
+                    .or_else(|| find_campus_id(&value));
+            }
+        }
+        if state.campus.is_none() {
+            // 분석 태그의 사용자 속성에도 campus_id 가 들어 있습니다.
+            let re = Regex::new(r#""campus_id"\s*:\s*"?(\d+)"#).expect("고정 정규식");
+            state.campus = re
+                .captures(html)
+                .and_then(|c| c[1].parse().ok())
+                .filter(|id: &i64| *id > 0);
+        }
+        state
+    }
+}
+
+fn percent_decode(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && let Ok(b) = u8::from_str_radix(&input[i + 1..i + 3], 16)
+        {
+            out.push(b);
+            i += 3;
+            continue;
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// `{"status":"success","result":{…}}` 봉투를 벗깁니다. 봉투가 없으면 그대로 둡니다.
+fn unwrap_result(path: &str, value: Value) -> Result<Value, EverytimeError> {
+    match value.get("status").and_then(Value::as_str) {
+        None => Ok(value),
+        Some("success") => Ok(value.get("result").cloned().unwrap_or(Value::Null)),
+        Some(other) => {
+            let message = value
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            eprintln!("everytime api {path}: status={other} message={message:?}");
+            Err(EverytimeError::Decode(if message.is_empty() {
+                other.to_string()
+            } else {
+                message
+            }))
+        }
+    }
+}
+
 fn location(res: &reqwest::Response) -> Option<String> {
     res.headers()
         .get(reqwest::header::LOCATION)
@@ -423,7 +497,11 @@ fn as_f64(v: Option<&Value>) -> Option<f64> {
 fn find_campus_id(value: &Value) -> Option<i64> {
     match value {
         Value::Object(map) => {
-            if let Some(id) = map.get("campusId").and_then(|v| as_i64(Some(v))) {
+            if let Some(id) = map
+                .get("campusId")
+                .and_then(|v| as_i64(Some(v)))
+                .filter(|id| *id > 0)
+            {
                 return Some(id);
             }
             map.values().find_map(find_campus_id)
@@ -438,11 +516,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_campus_id_from_initial_state() {
-        let html = r#"<html><head>
-            <script id="__INITIAL_STATE__" type="application/json">{"lecture":{"campusId":15,"foo":"bar"}}</script>
-            </head></html>"#;
-        assert_eq!(EverytimeClient::parse_campus_id(html), Some(15));
+    fn parses_encoded_initial_state() {
+        // 실제 강의실 화면처럼 퍼센트 인코딩된 JSON, 최상위 campusId=0 은 미끼
+        let html = r#"<script>gtag('set','user_properties',{"campus_id":"37"})</script>
+            <script id="__INITIAL_STATE__" type="text/plain">%7B%22campusData%22:%7B%22schoolId%22:21,%22campusId%22:37%7D,%22isLogged%22:true,%22campusId%22:0%7D</script>"#;
+        assert_eq!(
+            PageState::parse(html),
+            PageState {
+                logged: Some(true),
+                campus: Some(37)
+            }
+        );
+        let logged_out = r#"<script id="__INITIAL_STATE__" type="text/plain">%7B%22isLogged%22:false,%22campusId%22:0%7D</script>"#;
+        assert_eq!(PageState::parse(logged_out).logged, Some(false));
+        assert_eq!(PageState::parse(logged_out).campus, None);
+    }
+
+    #[test]
+    fn unwraps_success_envelope() {
+        let v: Value =
+            serde_json::from_str(r#"{"status":"success","result":{"lectures":[]}}"#).unwrap();
+        assert!(unwrap_result("/x", v).unwrap().get("lectures").is_some());
+        let v: Value = serde_json::from_str(r#"{"status":"fail","message":"no"}"#).unwrap();
+        assert!(unwrap_result("/x", v).is_err());
     }
 
     #[test]
