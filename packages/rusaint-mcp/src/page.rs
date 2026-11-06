@@ -55,7 +55,7 @@ button.secondary{background:transparent;color:var(--foreground);border:1px solid
 .safe svg{flex:none;margin-top:2px;color:#16a34a}
 .safe strong{display:block;font-weight:600}
 .safe p{color:var(--muted-foreground);font-size:13px;margin-top:2px}
-.row{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.row{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.row>.secondary{order:-1}
 h1 small{font-size:14px;font-weight:500;color:var(--muted-foreground)}
 "#;
 
@@ -150,8 +150,8 @@ pub fn everytime_step(ticket: &str, failed: bool) -> String {
 <div class="field"><label for="eid">에브리타임 아이디</label><input id="eid" name="everytime_id" autocomplete="off" maxlength="128"></div>
 <div class="field"><label for="epw">에브리타임 비밀번호</label><input id="epw" type="password" name="everytime_password" autocomplete="off" maxlength="1024"></div>
 <div class="row">
-<button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
 <button type="submit"><span class="spin"></span><span>에브리타임 로그인하기</span></button>
+<button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
 </div>
 </form>
 <p class="footer">에브리타임 비밀번호는 이 서버에만 잠깐 보관해요. 서버가 다시 켜지면 사라져요.</p>
@@ -181,8 +181,8 @@ pub fn library_step(ticket: &str, failed: bool) -> String {
 <div class="field"><label for="lid">도서관 아이디</label><input id="lid" name="library_id" inputmode="numeric" autocomplete="off" placeholder="20240000" maxlength="128"></div>
 <div class="field"><label for="lpw">도서관 비밀번호</label><input id="lpw" type="password" name="library_password" autocomplete="off" maxlength="1024"></div>
 <div class="row">
-<button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
 <button type="submit"><span class="spin"></span><span>도서관 로그인하기</span></button>
+<button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
 </div>
 </form>
 <p class="footer">도서관 비밀번호는 이 서버에만 잠깐 보관해요. 서버가 다시 켜지면 사라져요.</p>
