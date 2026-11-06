@@ -32,6 +32,8 @@ summary small{color:var(--muted-foreground);font-weight:400;font-size:12px}
 summary:after{content:"";width:7px;height:7px;border-right:1.5px solid var(--muted-foreground);border-bottom:1.5px solid var(--muted-foreground);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
 details[open] summary:after{transform:rotate(225deg) translateY(-2px)}
 details .inner{display:grid;gap:12px;padding:0 12px 12px}
+.steps{margin:0;padding-left:18px;display:grid;gap:6px}
+.inner code{padding:1px 4px;border-radius:4px;background:var(--muted);font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
 button{height:36px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:calc(var(--radius) - 2px);background:var(--primary);color:var(--primary-foreground);font:inherit;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(0 0 0/.1);transition:opacity .15s}
 button:hover{opacity:.9}
 button:disabled{opacity:.6;cursor:progress}
@@ -131,7 +133,7 @@ pub fn login(ticket: &str, sso_url: &str) -> String {
 /// SmartID 로그인 뒤 도서관 계정(선택)을 받는 화면
 pub fn everytime_step(ticket: &str, failed: bool) -> String {
     let alert = if failed {
-        r#"<div class="alert error"><strong>에브리타임 아이디나 비밀번호를 확인해 주세요</strong></div>"#
+        r#"<div class="alert error"><strong>쿠키를 확인해 주세요</strong><p>만료됐거나 일부만 복사됐을 수 있어요.</p></div>"#
     } else {
         ""
     };
@@ -142,19 +144,29 @@ pub fn everytime_step(ticket: &str, failed: bool) -> String {
 <div class="header">
 <span class="badge"><i></i>마지막 단계</span>
 <h1>에브리타임도 연결할까요?</h1>
-<p class="desc">강의평을 물어보려면 에브리타임 로그인이 필요해요.</p>
+<p class="desc">에타 로그인에는 캡차와 앱 승인이 있어서, 로그인은 브라우저에서 직접 하고 쿠키만 붙여넣어요.</p>
 </div>
 <form class="content" method="post" action="/sso/everytime">
 {alert}
 <input type="hidden" name="ticket" value="{ticket}">
-<div class="field"><label for="eid">에브리타임 아이디</label><input id="eid" name="everytime_id" autocomplete="off" maxlength="128"></div>
-<div class="field"><label for="epw">에브리타임 비밀번호</label><input id="epw" type="password" name="everytime_password" autocomplete="off" maxlength="1024"></div>
+<div class="field"><label for="eck">에타 쿠키 (etsid)</label><input id="eck" type="password" name="everytime_cookie" autocomplete="off" spellcheck="false" placeholder="s%3A…" maxlength="4096"></div>
+<details>
+<summary><span>쿠키 꺼내는 법</span><small>PC에서 1분</small></summary>
+<div class="inner">
+<ol class="steps">
+<li>PC 브라우저에서 everytime.kr 에 로그인해요. <b>로그인 유지</b>를 꼭 체크해요.</li>
+<li>크롬: F12 → Application(애플리케이션) → Cookies → https://everytime.kr</li>
+<li><code>etsid</code> 줄의 Value 를 두 번 눌러 복사해서 위에 붙여넣어요.</li>
+</ol>
+<p class="hint">사파리는 설정 → 고급 → 웹 개발자용 기능 보기를 켠 뒤, 개발자용 → 웹 속성 보기 → 저장 공간 → 쿠키에 있어요.<br>30일 동안 쓸 수 있어요. 그 브라우저에서 로그아웃하면 바로 끊겨요.</p>
+</div>
+</details>
 <div class="row">
-<button type="submit"><span class="spin"></span><span>에브리타임 로그인하기</span></button>
+<button type="submit"><span class="spin"></span><span>에브리타임 연결하기</span></button>
 <button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
 </div>
 </form>
-<p class="footer">에브리타임 비밀번호는 이 서버에만 잠깐 보관해요. 서버가 다시 켜지면 사라져요.</p>
+<p class="footer">쿠키는 이 서버 메모리에만 두고, 서버가 다시 켜지면 사라져요.</p>
 </main><script>{SCRIPT}</script>"#
         ),
     )

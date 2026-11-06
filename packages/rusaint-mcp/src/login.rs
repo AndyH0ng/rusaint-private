@@ -35,7 +35,9 @@ impl Account {
         match self {
             Account::Sso => "통합(SSO) 계정 — u-saint·LMS·SSU-PATH",
             Account::Library => "중앙도서관 계정",
-            Account::Everytime => "에브리타임 계정 — 강의평 조회",
+            Account::Everytime => {
+                "에브리타임 세션 — 강의평 조회 (아이디 칸엔 아무 이름, 비밀번호 칸엔 etsid 쿠키)"
+            }
         }
     }
 }
@@ -208,11 +210,15 @@ async fn verify(account: Account, id: &str, password: &str) -> Result<(), String
             .login()
             .await
             .map_err(|e| e.to_string()),
-        Account::Everytime => rusaint_everytime::EverytimeClient::new(id, password)
-            .map_err(|e| e.to_string())?
-            .login()
-            .await
-            .map_err(|e| e.to_string()),
+        // 에타는 비밀번호 대신 브라우저에서 받은 세션 쿠키(etsid)를 비밀번호 칸에 저장합니다.
+        Account::Everytime => {
+            let _ = id;
+            rusaint_everytime::EverytimeClient::from_session(password)
+                .map_err(|e| e.to_string())?
+                .verify()
+                .await
+                .map_err(|e| e.to_string())
+        }
     }
 }
 

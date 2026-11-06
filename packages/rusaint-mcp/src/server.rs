@@ -558,12 +558,12 @@ impl SsuServer {
     /// 에브리타임 클라이언트는 처음 필요할 때 Keychain 에서 계정을 읽어 만듭니다.
     async fn everytime(&self) -> Result<Arc<EverytimeClient>, String> {
         if self.remote && !self.everytime.initialized() {
-            return Err("에브리타임 계정이 연결되지 않았습니다. 커넥터를 다시 연결하고 에브리타임 계정도 입력하세요.".into());
+            return Err("에브리타임이 연결되지 않았습니다. 커넥터를 다시 연결하고 마지막 단계에서 에브리타임 쿠키를 넣어 주세요.".into());
         }
         self.everytime
             .get_or_try_init(|| async {
-                let (id, password) = keychain::credentials(keychain::EVERYTIME_SERVICE).await?;
-                EverytimeClient::new(id, password)
+                let (_, cookie) = keychain::credentials(keychain::EVERYTIME_SERVICE).await?;
+                EverytimeClient::from_session(&cookie)
                     .map(Arc::new)
                     .map_err(|e| e.to_string())
             })

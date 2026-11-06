@@ -1,14 +1,14 @@
 //! 에브리타임(everytime.kr) 비공식 클라이언트입니다. **강의평 조회 전용**입니다.
 //!
-//! 에타 계정은 u-saint SSO와 무관합니다. 아이디·비밀번호로 로그인해 받은 세션 쿠키를 메모리에만 두고,
-//! 끊기면 한 번 다시 로그인합니다. 강의평을 읽기만 하며, 글쓰기·시간표·게시판 등 다른 기능은 호출하지 않습니다.
-//!
-//! 요청·응답 형식은 2026년 기준 공개된 비공식 구현을 참고했습니다. 학교 서버가 아니라 민간 서비스이므로
-//! 캡차·추가 인증이 뜨면 우회하지 않고 오류를 돌려줍니다.
+//! 에타 로그인은 reCAPTCHA Enterprise 와 새 기기 2단계 인증(앱 승인)을 거치므로 서버가 대신 로그인하지 않습니다.
+//! 사용자가 자기 브라우저에서 로그인(로그인 유지 체크 시 30일)한 뒤 받은 세션 쿠키 `etsid` 를 넘겨받아
+//! 메모리에만 두고 씁니다. 세션이 끝나면 되살리지 않고 다시 넣어 달라고 알립니다.
+//! 강의평을 읽기만 하며, 글쓰기·시간표·게시판 등 다른 기능은 호출하지 않습니다.
 
 mod html;
 mod model;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use regex::Regex;
@@ -20,9 +20,11 @@ pub use model::*;
 const PUBLIC: &str = "https://everytime.kr";
 const API: &str = "https://api.everytime.kr";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
-const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
 /// 강의평 본문을 한 번에 가져오는 최대 개수
 pub const MAX_ARTICLES: u32 = 20;
+/// 세션 쿠키 이름
+pub const SESSION_COOKIE: &str = "etsid";
 
 /// 에브리타임 API 오류
 #[derive(Debug, thiserror::Error)]
@@ -31,122 +33,88 @@ pub enum EverytimeError {
     Request(#[from] reqwest::Error),
     #[error("응답 형식이 예상과 다릅니다: {0}")]
     Decode(String),
-    #[error("에브리타임 로그인에 실패했어요. 아이디와 비밀번호를 확인해 주세요.")]
-    LoginFailed,
     #[error(
-        "에브리타임 추가 인증이 필요해요. everytime.kr 에서 직접 한 번 로그인한 뒤 다시 시도해 주세요."
+        "에브리타임 세션이 끝났어요. 브라우저에서 에타에 다시 로그인(로그인 유지 체크)하고, 커넥터를 다시 연결해 새 쿠키를 넣어 주세요."
     )]
-    SecondaryAuthRequired,
-    /// 아이디·비밀번호가 비어 있거나 이미 서버에서 거부됨. 계정 잠금을 막기 위해 다시 보내지 않습니다.
-    #[error("에브리타임 계정 정보를 사용할 수 없습니다: {0}")]
-    CredentialUnusable(String),
+    SessionExpired,
+    #[error("에브리타임 쿠키 형식이 올바르지 않아요: {0}")]
+    InvalidCookie(String),
     #[error("{0}")]
     NotFound(String),
 }
 
-/// 에브리타임 클라이언트. 세션 쿠키는 내부 쿠키 저장소(메모리)에만 보관됩니다.
+/// 에브리타임 클라이언트. 사용자가 넘긴 세션 쿠키는 내부 쿠키 저장소(메모리)에만 보관됩니다.
 pub struct EverytimeClient {
     http: reqwest::Client,
-    userid: String,
-    password: String,
-    logged_in: Mutex<bool>,
     campus_id: Mutex<Option<i64>>,
-    /// 서버가 계정 정보를 거부한 사유. 한 번 거부되면 이 클라이언트로는 다시 로그인하지 않습니다.
-    rejected: Mutex<Option<String>>,
+    /// 한 번 만료가 확인되면 같은 쿠키로 더 요청하지 않습니다.
+    expired: Mutex<bool>,
+}
+
+/// 붙여넣은 값에서 `etsid` 값만 꺼냅니다. `etsid=…`, 앞뒤 공백·따옴표, 세미콜론 뒤 속성을 허용합니다.
+pub fn parse_session_cookie(input: &str) -> Result<String, EverytimeError> {
+    let mut value = input.trim().trim_matches(|c| c == '"' || c == '\'').trim();
+    // "etsid=값; Domain=…" 처럼 통째로 붙여넣은 경우
+    if let Some(pos) = value.find(&format!("{SESSION_COOKIE}=")) {
+        value = &value[pos + SESSION_COOKIE.len() + 1..];
+    }
+    let value = value.split(';').next().unwrap_or("").trim();
+    if value.is_empty() {
+        return Err(EverytimeError::InvalidCookie("값이 비어 있어요".into()));
+    }
+    if value.len() > 1024 {
+        return Err(EverytimeError::InvalidCookie("값이 너무 길어요".into()));
+    }
+    if !value
+        .bytes()
+        .all(|b| b.is_ascii_graphic() && b != b',' && b != b'"' && b != b'\\')
+    {
+        return Err(EverytimeError::InvalidCookie(
+            "쿠키 값에 쓸 수 없는 문자가 있어요".into(),
+        ));
+    }
+    Ok(value.to_string())
 }
 
 impl EverytimeClient {
-    /// 아직 로그인하지 않은 클라이언트를 만듭니다. 첫 요청 때 로그인합니다.
-    pub fn new(
-        userid: impl Into<String>,
-        password: impl Into<String>,
-    ) -> Result<Self, EverytimeError> {
+    /// 브라우저에서 받은 세션 쿠키(`etsid` 값 또는 `etsid=…`)로 클라이언트를 만듭니다. 아직 서버에 확인하지는 않습니다.
+    pub fn from_session(cookie: &str) -> Result<Self, EverytimeError> {
+        let value = parse_session_cookie(cookie)?;
+        let jar = Arc::new(reqwest::cookie::Jar::default());
+        let url: reqwest::Url = PUBLIC.parse().expect("고정 주소");
+        jar.add_cookie_str(
+            &format!("{SESSION_COOKIE}={value}; Domain=.everytime.kr; Path=/; Secure; HttpOnly"),
+            &url,
+        );
         let http = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
-            .cookie_store(true)
-            // 리다이렉트를 따라가지 않아야 로그인 성공(302)과 인증 만료(로그인 화면으로 302)를 구분할 수 있습니다.
+            .cookie_provider(jar)
+            // 리다이렉트를 따라가지 않아야 세션 만료(로그인 화면으로 3xx)를 알아챌 수 있습니다.
             .redirect(reqwest::redirect::Policy::none())
             .user_agent(USER_AGENT)
             .build()?;
         Ok(Self {
             http,
-            userid: userid.into(),
-            password: password.into(),
-            logged_in: Mutex::new(false),
             campus_id: Mutex::new(None),
-            rejected: Mutex::new(None),
+            expired: Mutex::new(false),
         })
     }
 
-    /// 로그인해서 세션 쿠키를 채웁니다. 실패(아이디·비밀번호 불일치)는 다시 시도하지 않도록 기록합니다.
-    pub async fn login(&self) -> Result<(), EverytimeError> {
-        if self.userid.trim().is_empty() || self.password.is_empty() {
-            return Err(EverytimeError::CredentialUnusable(
-                "아이디 또는 비밀번호가 비어 있습니다".into(),
-            ));
+    /// 세션이 살아 있는지 확인합니다(강의실 검색 화면을 열어 캠퍼스를 읽음).
+    pub async fn verify(&self) -> Result<(), EverytimeError> {
+        self.campus().await.map(|_| ())
+    }
+
+    async fn check_alive(&self) -> Result<(), EverytimeError> {
+        if *self.expired.lock().await {
+            return Err(EverytimeError::SessionExpired);
         }
-        if let Some(reason) = self.rejected.lock().await.clone() {
-            return Err(EverytimeError::CredentialUnusable(reason));
-        }
-        let form = urlencode(&[
-            ("userid", self.userid.clone()),
-            ("password", self.password.clone()),
-            ("redirect", "/".to_string()),
-        ]);
-        let res = self
-            .http
-            .post(format!("{PUBLIC}/user/login"))
-            .header(reqwest::header::ORIGIN, PUBLIC)
-            .header(reqwest::header::REFERER, format!("{PUBLIC}/login"))
-            .header(
-                reqwest::header::CONTENT_TYPE,
-                "application/x-www-form-urlencoded",
-            )
-            .body(form)
-            .send()
-            .await?;
-        let status = res.status();
-        let location = location(&res);
-        let cookies: Vec<String> = res.cookies().map(|c| c.name().to_string()).collect();
-        // 값은 남기지 않고 상태·이동 위치·쿠키 이름만 남깁니다.
-        eprintln!(
-            "everytime login: status={} location={} cookies={:?}",
-            status.as_u16(),
-            location.as_deref().unwrap_or("-"),
-            cookies
-        );
-        if !status.is_redirection() {
-            let body = res.text().await?;
-            // 로그인 실패 페이지는 alert 뒤 history.go(-1) 로 되돌립니다.
-            if body.contains("history.go(-1)") {
-                let reason = "아이디 또는 비밀번호가 올바르지 않습니다".to_string();
-                *self.rejected.lock().await = Some(reason);
-                return Err(EverytimeError::LoginFailed);
-            }
-            eprintln!(
-                "everytime login: 예상 밖 응답 len={} captcha={} snippet={:?}",
-                body.len(),
-                body.contains("captcha") || body.contains("recaptcha"),
-                body.chars()
-                    .filter(|c| !c.is_control())
-                    .take(160)
-                    .collect::<String>()
-            );
-            return Err(EverytimeError::SecondaryAuthRequired);
-        }
-        if location.as_deref().is_some_and(|l| l.contains("login")) {
-            eprintln!("everytime login: 로그인 화면으로 되돌아감");
-            return Err(EverytimeError::SecondaryAuthRequired);
-        }
-        *self.logged_in.lock().await = true;
         Ok(())
     }
 
-    async fn ensure_login(&self) -> Result<(), EverytimeError> {
-        if *self.logged_in.lock().await {
-            return Ok(());
-        }
-        self.login().await
+    async fn mark_expired(&self) -> EverytimeError {
+        *self.expired.lock().await = true;
+        EverytimeError::SessionExpired
     }
 
     /// 현재 캠퍼스 id 를 `/lecture/search` 초기 상태에서 한 번 읽어 둡니다.
@@ -154,7 +122,7 @@ impl EverytimeClient {
         if let Some(id) = *self.campus_id.lock().await {
             return Ok(id);
         }
-        self.ensure_login().await?;
+        self.check_alive().await?;
         let res = self
             .http
             .get(format!("{PUBLIC}/lecture/search"))
@@ -167,12 +135,18 @@ impl EverytimeClient {
                 res.status().as_u16(),
                 location(&res).as_deref().unwrap_or("-")
             );
-            *self.logged_in.lock().await = false;
-            return Err(EverytimeError::SecondaryAuthRequired);
+            return Err(self.mark_expired().await);
         }
         let html = res.text().await?;
-        let id = Self::parse_campus_id(&html)
-            .ok_or_else(|| EverytimeError::Decode("현재 캠퍼스를 확인하지 못했어요".into()))?;
+        let Some(id) = Self::parse_campus_id(&html) else {
+            // 로그인하지 않은 상태로도 200 을 주는 경우가 있어, 캠퍼스가 없으면 세션이 없는 것으로 봅니다.
+            eprintln!(
+                "everytime campus: 캠퍼스 없음 len={} login_link={}",
+                html.len(),
+                html.contains("account.everytime.kr/login")
+            );
+            return Err(self.mark_expired().await);
+        };
         *self.campus_id.lock().await = Some(id);
         Ok(id)
     }
@@ -192,7 +166,7 @@ impl EverytimeClient {
         form: &[(&str, String)],
         referer: &str,
     ) -> Result<Value, EverytimeError> {
-        self.ensure_login().await?;
+        self.check_alive().await?;
         let res = self
             .http
             .post(format!("{API}{path}"))
@@ -213,13 +187,12 @@ impl EverytimeClient {
                 location(&res).as_deref().unwrap_or("-")
             );
             if status.is_redirection() || status.as_u16() == 401 || status.as_u16() == 403 {
-                *self.logged_in.lock().await = false;
-                return Err(EverytimeError::SecondaryAuthRequired);
+                return Err(self.mark_expired().await);
             }
             return Err(EverytimeError::Decode(format!("HTTP {}", status.as_u16())));
         }
         let text = res.text().await?;
-        if serde_json::from_str::<Value>(&text).is_err() {
+        serde_json::from_str(&text).map_err(|e| {
             eprintln!(
                 "everytime api {path}: JSON 아님 len={} snippet={:?}",
                 text.len(),
@@ -228,8 +201,8 @@ impl EverytimeClient {
                     .take(160)
                     .collect::<String>()
             );
-        }
-        serde_json::from_str(&text).map_err(|e| EverytimeError::Decode(e.to_string()))
+            EverytimeError::Decode(e.to_string())
+        })
     }
 
     /// 강의평이 등록된 과목을 검색합니다. `field` 는 "name"(과목명) 또는 "professor"(교수명)입니다.
@@ -470,6 +443,18 @@ mod tests {
             <script id="__INITIAL_STATE__" type="application/json">{"lecture":{"campusId":15,"foo":"bar"}}</script>
             </head></html>"#;
         assert_eq!(EverytimeClient::parse_campus_id(html), Some(15));
+    }
+
+    #[test]
+    fn parses_pasted_session_cookie() {
+        assert_eq!(parse_session_cookie("s%3Aabc.def").unwrap(), "s%3Aabc.def");
+        assert_eq!(
+            parse_session_cookie(" etsid=s%3Aabc.def; Domain=.everytime.kr; Path=/ ").unwrap(),
+            "s%3Aabc.def"
+        );
+        assert_eq!(parse_session_cookie("\"s%3Aabc\"").unwrap(), "s%3Aabc");
+        assert!(parse_session_cookie("  ").is_err());
+        assert!(parse_session_cookie("a b").is_err());
     }
 
     #[test]
