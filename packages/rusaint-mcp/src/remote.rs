@@ -85,6 +85,8 @@ struct App {
     /// 비밀번호를 서버에 보내지 않으므로 남의 계정을 잠글 수 없습니다. 비밀번호 로그인은 계속 목록만 허용합니다.
     sso_open: bool,
     data: Arc<Mutex<Data>>,
+    /// 에타 쿠키만 다시 받는 재연결 링크 발급기. 모든 연결이 공유합니다.
+    relink: crate::server::Relink,
 }
 #[derive(Default)]
 struct Data {
@@ -171,8 +173,10 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if sso_open {
         eprintln!("학교 SSO 로그인: 모든 학번 허용 (비밀번호 로그인은 RUSAINT_ALLOWED_IDS 만)");
     }
+    let base = base.trim_end_matches('/').to_string();
     let app = App {
-        base: base.trim_end_matches('/').to_string(),
+        relink: crate::server::Relink::new(base.clone()),
+        base,
         allowed: Arc::new(allowed),
         sso_open,
         data: Arc::default(),
@@ -212,6 +216,8 @@ fn router(app: App) -> Router {
         .route("/sso/callback/{ticket}", get(sso_callback))
         .route("/sso/finish", post(sso_finish))
         .route("/sso/everytime", post(sso_everytime))
+        .route("/everytime/relink/{ticket}", get(everytime_relink_form))
+        .route("/everytime/relink", post(everytime_relink_submit))
         .route("/token", post(token))
         .route("/mcp", any(mcp))
         .layer(axum::middleware::map_response(
@@ -732,9 +738,72 @@ async fn sso_everytime(
             }
         }
     };
-    let server = SsuServer::authenticated(sso, library, everytime).map_err(|_| invalid())?;
+    let mut server = SsuServer::authenticated(sso, library, everytime).map_err(|_| invalid())?;
+    server.set_relink(app.relink.clone());
     server.spawn_keepalive();
     issue_code(&app, auth, server).await
+}
+
+/// 재연결 링크가 만료됐을 때 보여 줄 안내
+fn relink_expired() -> Response {
+    page(
+        StatusCode::NOT_FOUND,
+        "링크가 만료됐어요",
+        "재연결 링크는 10분만 쓸 수 있어요. Claude에서 everytime_relink 로 새 링크를 받아 주세요.",
+    )
+}
+
+/// 에타 전용 재연결 화면. 티켓이 살아 있으면 쿠키 입력 폼을, 아니면 만료 안내를 보여 줍니다.
+async fn everytime_relink_form(State(app): State<App>, Path(ticket): Path<String>) -> Response {
+    if app.relink.get(&ticket).is_none() {
+        return relink_expired();
+    }
+    Html(crate::page::everytime_relink(&ticket, false)).into_response()
+}
+
+#[derive(Deserialize)]
+struct RelinkFinish {
+    ticket: String,
+    #[serde(default)]
+    everytime_cookie: String,
+}
+
+/// 에타 쿠키만 받아 해당 연결의 에타 슬롯을 교체합니다. SSO·도서관은 건드리지 않습니다.
+async fn everytime_relink_submit(State(app): State<App>, Form(req): Form<RelinkFinish>) -> Response {
+    let Some(cell) = app.relink.get(&req.ticket) else {
+        return relink_expired();
+    };
+    let cookie = req.everytime_cookie.trim();
+    if cookie.is_empty() || cookie.len() > 4096 {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Html(crate::page::everytime_relink(&req.ticket, true)),
+        )
+            .into_response();
+    }
+    app.data.lock().await.attempts.push(Instant::now());
+    let login = async {
+        let client =
+            Arc::new(rusaint_everytime::EverytimeClient::from_session(cookie).map_err(|_| ())?);
+        client.verify().await.map_err(|_| ())?;
+        Ok::<_, ()>(client)
+    };
+    match tokio::time::timeout(Duration::from_secs(30), login).await {
+        Ok(Ok(client)) => {
+            *cell.lock().unwrap() = Some(client);
+            app.relink.consume(&req.ticket);
+            page(
+                StatusCode::OK,
+                "다시 연결됐어요",
+                "에브리타임이 다시 연결됐어요. Claude로 돌아가 이어서 쓰면 됩니다.",
+            )
+        }
+        _ => (
+            StatusCode::UNAUTHORIZED,
+            Html(crate::page::everytime_relink(&req.ticket, true)),
+        )
+            .into_response(),
+    }
 }
 
 /// 로그인을 마친 서버를 인증 코드에 묶고 앱의 콜백으로 돌려보냅니다.
@@ -903,6 +972,7 @@ mod tests {
             allowed: Arc::new(allowed_ids(" 20240000 , ,20249999")),
             sso_open: false,
             data: Arc::default(),
+            relink: crate::server::Relink::new("https://mcp.example.com"),
         }
     }
 
@@ -1005,6 +1075,14 @@ mod tests {
                     "다른 화면에서 이어서 연결하고 있어요",
                     "학교 로그인은 끝났어요. 먼저 열린 화면에서 계속해 주세요.",
                 ),
+            ),
+            (
+                "8-everytime-relink.html",
+                crate::page::everytime_relink("t", false),
+            ),
+            (
+                "9-everytime-relink-error.html",
+                crate::page::everytime_relink("t", true),
             ),
         ];
         for (name, html) in pages {

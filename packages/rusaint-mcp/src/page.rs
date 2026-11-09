@@ -13,6 +13,7 @@ const STYLE: &str = r#"
 body{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:24px 16px;background:var(--background);color:var(--foreground);font:14px/1.5 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
 .card{width:100%;max-width:400px;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px);background:var(--card);box-shadow:0 1px 3px rgb(0 0 0/.06),0 1px 2px rgb(0 0 0/.04)}
 .header{padding:24px 24px 0;display:grid;gap:6px}
+.card>.header:last-child{padding-bottom:24px}
 h1{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.3;margin-top:6px}
 .desc{color:var(--muted-foreground)}
 .content{padding:20px 24px 24px;display:grid;gap:16px}
@@ -165,6 +166,43 @@ pub fn everytime_step(ticket: &str, failed: bool) -> String {
 <button type="submit"><span class="spin"></span><span>에브리타임 연결하기</span></button>
 <button type="submit" name="skip" value="1" class="secondary" formnovalidate><span class="spin"></span><span>건너뛰기</span></button>
 </div>
+</form>
+<p class="footer">쿠키는 이 서버 메모리에만 두고, 서버가 다시 켜지면 사라져요.</p>
+</main><script>{SCRIPT}</script>"#
+        ),
+    )
+}
+
+/// 에타 세션만 다시 연결하는 화면. 학교 로그인·도서관은 건드리지 않습니다.
+pub fn everytime_relink(ticket: &str, failed: bool) -> String {
+    let alert = if failed {
+        r#"<div class="alert error"><strong>쿠키를 확인해 주세요</strong><p>만료됐거나 일부만 복사됐을 수 있어요.</p></div>"#
+    } else {
+        ""
+    };
+    document(
+        "에브리타임 다시 연결",
+        &format!(
+            r#"<main class="card">
+<div class="header">
+<h1>에브리타임 다시 연결</h1>
+<p class="desc">학교 계정·도서관 연결은 그대로예요. 에타 쿠키만 새로 넣으면 됩니다.</p>
+</div>
+<form class="content" method="post" action="/everytime/relink">
+{alert}
+<input type="hidden" name="ticket" value="{ticket}">
+<div class="field"><label for="eck">에타 쿠키 (etsid)</label><input id="eck" type="password" name="everytime_cookie" autocomplete="off" spellcheck="false" placeholder="s%3A…" maxlength="4096"></div>
+<details>
+<summary><span>쿠키 꺼내는 법</span><small>PC에서 1분</small></summary>
+<div class="inner">
+<ol class="steps">
+<li>PC 브라우저에서 everytime.kr 에 로그인해요. <b>로그인 유지</b>를 꼭 체크해요.</li>
+<li>크롬: F12 → Application(애플리케이션) → Cookies → https://everytime.kr</li>
+<li><code>etsid</code> 줄의 Value 를 두 번 눌러 복사해서 위에 붙여넣어요.</li>
+</ol>
+</div>
+</details>
+<button type="submit"><span class="spin"></span><span>에브리타임 연결하기</span></button>
 </form>
 <p class="footer">쿠키는 이 서버 메모리에만 두고, 서버가 다시 켜지면 사라져요.</p>
 </main><script>{SCRIPT}</script>"#

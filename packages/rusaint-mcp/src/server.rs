@@ -386,14 +386,60 @@ pub struct DownloadRequest {
     pub content_id: String,
 }
 
+/// 교체 가능한 에브리타임 클라이언트 슬롯. 한 연결의 모든 토큰 복사본이 같은 셀을 공유하므로,
+/// 여기만 바꿔 끼우면 SSO·도서관은 그대로 둔 채 에타 쿠키만 갱신됩니다.
+pub type EverytimeCell = Arc<std::sync::Mutex<Option<Arc<EverytimeClient>>>>;
+
+/// 에타 재연결 링크가 유효한 시간
+const RELINK_TTL: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+
+/// 에타 쿠키만 다시 받는 재연결 링크를 발급·보관합니다. 모든 원격 연결이 하나를 공유합니다.
+#[derive(Clone)]
+pub struct Relink {
+    base: Arc<str>,
+    tickets: Arc<std::sync::Mutex<std::collections::HashMap<String, (EverytimeCell, std::time::Instant)>>>,
+}
+
+impl Relink {
+    pub fn new(base: impl Into<String>) -> Self {
+        Self {
+            base: Arc::from(base.into().as_str()),
+            tickets: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        }
+    }
+
+    /// 이 연결의 에타 슬롯에 묶인 1회용 티켓을 만들고 재연결 URL 을 돌려줍니다.
+    pub fn mint(&self, cell: EverytimeCell) -> String {
+        let ticket = uuid::Uuid::new_v4().simple().to_string();
+        let now = std::time::Instant::now();
+        let mut tickets = self.tickets.lock().unwrap();
+        tickets.retain(|_, (_, exp)| *exp > now);
+        tickets.insert(ticket.clone(), (cell, now + RELINK_TTL));
+        format!("{}/everytime/relink/{ticket}", self.base)
+    }
+
+    /// 티켓에 묶인 에타 슬롯을 돌려줍니다(만료 전까지 여러 번 조회 가능). 없으면 None.
+    pub fn get(&self, ticket: &str) -> Option<EverytimeCell> {
+        let now = std::time::Instant::now();
+        let mut tickets = self.tickets.lock().unwrap();
+        tickets.retain(|_, (_, exp)| *exp > now);
+        tickets.get(ticket).map(|(cell, _)| cell.clone())
+    }
+
+    /// 재연결을 마친 티켓을 지웁니다.
+    pub fn consume(&self, ticket: &str) {
+        self.tickets.lock().unwrap().remove(ticket);
+    }
+}
+
 #[derive(Clone)]
 pub struct SsuServer {
     meal: Arc<MealClient>,
     calendar: Arc<CalendarClient>,
     regulation: Arc<RegulationClient>,
     library: Arc<OnceCell<Arc<LibraryClient>>>,
-    /// 에브리타임 강의평 조회용. 학교 계정과 무관한 별도 계정입니다.
-    everytime: Arc<OnceCell<Arc<EverytimeClient>>>,
+    /// 에브리타임 강의평 조회용. 학교 계정과 무관한 별도 계정입니다. 쿠키 만료 시 이 슬롯만 다시 채웁니다.
+    everytime: EverytimeCell,
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
     path: Arc<OnceCell<Arc<PathClient>>>,
@@ -403,6 +449,8 @@ pub struct SsuServer {
     automation: Arc<Automation>,
     tool_router: ToolRouter<Self>,
     remote: bool,
+    /// 원격 연결에서 에타 전용 재연결 링크를 발급하는 핸들. 로컬 연결은 `None`.
+    relink: Option<Relink>,
     /// 이 연결의 모든 복사본이 사라지면 keep-alive 도 멈추도록 약한 참조로만 봅니다.
     alive: Arc<()>,
 }
@@ -417,7 +465,7 @@ impl SsuServer {
             calendar: Arc::new(CalendarClient::new().map_err(|e| e.to_string())?),
             regulation: Arc::new(RegulationClient::new().map_err(|e| e.to_string())?),
             library: Arc::new(OnceCell::new()),
-            everytime: Arc::new(OnceCell::new()),
+            everytime: Arc::new(std::sync::Mutex::new(None)),
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
             path: Arc::new(OnceCell::new()),
@@ -426,6 +474,7 @@ impl SsuServer {
             automation: Arc::new(Automation::default()),
             tool_router: Self::tool_router(),
             remote: false,
+            relink: None,
             alive: Arc::new(()),
         })
     }
@@ -443,9 +492,19 @@ impl SsuServer {
             let _ = server.library.set(library);
         }
         if let Some(everytime) = everytime {
-            let _ = server.everytime.set(everytime);
+            *server.everytime.lock().unwrap() = Some(everytime);
         }
         Ok(server)
+    }
+
+    /// 원격 연결에 에타 전용 재연결 링크 발급 핸들을 붙입니다.
+    pub fn set_relink(&mut self, relink: Relink) {
+        self.relink = Some(relink);
+    }
+
+    /// 에타 세션(쿠키)이 만료됐을 때 쓰는 재연결 URL 을 발급합니다. 원격 연결에서만 동작합니다.
+    pub fn everytime_relink_url(&self) -> Option<String> {
+        self.relink.as_ref().map(|relink| relink.mint(self.everytime.clone()))
     }
 
     /// SSO 토큰으로 연결한 경우 u-saint·LMS·SSU-PATH 세션을 미리 열고 10분마다 다시 로그인하지 않고 확인합니다.
@@ -557,18 +616,20 @@ impl SsuServer {
 
     /// 에브리타임 클라이언트는 처음 필요할 때 Keychain 에서 계정을 읽어 만듭니다.
     async fn everytime(&self) -> Result<Arc<EverytimeClient>, String> {
-        if self.remote && !self.everytime.initialized() {
-            return Err("에브리타임이 연결되지 않았습니다. 커넥터를 다시 연결하고 마지막 단계에서 에브리타임 쿠키를 넣어 주세요.".into());
+        // 이미 연결돼 있으면 그대로 씁니다. (락을 await 너머로 들고 가지 않도록 먼저 복제)
+        if let Some(client) = self.everytime.lock().unwrap().clone() {
+            return Ok(client);
         }
-        self.everytime
-            .get_or_try_init(|| async {
-                let (_, cookie) = keychain::credentials(keychain::EVERYTIME_SERVICE).await?;
-                EverytimeClient::from_session(&cookie)
-                    .map(Arc::new)
-                    .map_err(|e| e.to_string())
-            })
-            .await
-            .cloned()
+        if self.remote {
+            return Err("에브리타임 세션이 없거나 만료됐습니다. everytime_relink 로 재연결 링크를 받아 쿠키만 다시 넣어 주세요.".into());
+        }
+        // 로컬 연결은 Keychain 에서 한 번 읽어 채웁니다.
+        let (_, cookie) = keychain::credentials(keychain::EVERYTIME_SERVICE).await?;
+        let client = EverytimeClient::from_session(&cookie)
+            .map(Arc::new)
+            .map_err(|e| e.to_string())?;
+        *self.everytime.lock().unwrap() = Some(client.clone());
+        Ok(client)
     }
 
     /// 통합 계정은 처음 필요할 때 Keychain 에서 한 번 읽어 세 서비스가 공유합니다.
@@ -1777,6 +1838,18 @@ impl SsuServer {
             .await
             .map_err(|e| e.to_string())?;
         to_json(&json!({ "saved": true, "path": dest, "bytes": bytes }))
+    }
+
+    /// 에브리타임 세션(쿠키)이 만료돼 강의평 조회가 실패할 때, 학교 로그인을 다시 하지 않고 에타만 다시 연결하는 링크를 발급합니다.
+    /// 사용자가 이 링크를 브라우저에서 열어 새 쿠키만 붙여넣으면 됩니다. SSO·도서관 연결은 그대로 유지됩니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = false))]
+    async fn everytime_relink(&self) -> ToolResult {
+        match self.everytime_relink_url() {
+            Some(url) => Ok(format!(
+                "아래 링크를 브라우저에서 열어 에브리타임 쿠키(etsid)만 다시 넣어 주세요. 학교 계정·도서관 연결은 그대로 유지됩니다.\n{url}\n\n링크는 10분간 유효합니다.",
+            )),
+            None => Err("이 연결에서는 재연결 링크를 쓸 수 없습니다. 커넥터를 다시 연결해 주세요.".into()),
+        }
     }
 
     /// 에브리타임에 강의평이 등록된 과목을 검색합니다. 과목명 또는 교수명으로 찾으며, 결과의 id 를 everytime_lecture_reviews 에 넘깁니다.
