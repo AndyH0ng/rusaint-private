@@ -417,10 +417,10 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
             client.login().await.map_err(|_| ())?;
             Some(client)
         };
-        SsuServer::authenticated(sso, library, None).map_err(|_| ())
+        Ok::<_, ()>(library)
     };
-    let server = match tokio::time::timeout(Duration::from_secs(60), verified).await {
-        Ok(Ok(server)) => server,
+    let library = match tokio::time::timeout(Duration::from_secs(60), verified).await {
+        Ok(Ok(library)) => library,
         _ => return Ok((
             StatusCode::UNAUTHORIZED,
             Html(crate::page::message(
@@ -430,7 +430,14 @@ async fn login(State(app): State<App>, Form(req): Form<Login>) -> Result<Respons
         )
             .into_response()),
     };
-    issue_code(&app, auth, server).await
+    // 비밀번호 연결도 마지막에 에브리타임(선택) 단계를 거칩니다.
+    let next = secret();
+    app.data
+        .lock()
+        .await
+        .library_pending
+        .insert(next.clone(), Expiring::new((auth, sso, library), TTL));
+    Ok(Html(crate::page::everytime_step(&next, false)).into_response())
 }
 
 /// SmartID 로그인 화면 주소. 로그인이 끝나면 SmartID 가 `apiReturnUrl` 뒤에 `?sToken=…&sIdno=학번` 을 붙여 돌려보냅니다.
