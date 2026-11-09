@@ -13,8 +13,6 @@ const STYLE: &str = r#"
 body{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:24px 16px;background:var(--background);color:var(--foreground);font:14px/1.5 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;-webkit-font-smoothing:antialiased;word-break:keep-all}
 .card{width:100%;max-width:400px;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px);background:var(--card);box-shadow:0 1px 3px rgb(0 0 0/.06),0 1px 2px rgb(0 0 0/.04)}
 .header{padding:24px 24px 0;display:grid;gap:6px}
-.badge{justify-self:start;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:500;color:var(--muted-foreground)}
-.badge i{width:6px;height:6px;border-radius:50%;background:#22c55e}
 h1{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.3;margin-top:6px}
 .desc{color:var(--muted-foreground)}
 .content{padding:20px 24px 24px;display:grid;gap:16px}
@@ -142,7 +140,6 @@ pub fn everytime_step(ticket: &str, failed: bool) -> String {
         &format!(
             r#"<main class="card">
 <div class="header">
-<span class="badge"><i></i>마지막 단계</span>
 <h1>에브리타임도 연결할까요?</h1>
 <p class="desc">에타 로그인에는 캡차와 앱 승인이 있어서, 로그인은 브라우저에서 직접 하고 쿠키만 붙여넣어요.</p>
 </div>
@@ -158,7 +155,6 @@ pub fn everytime_step(ticket: &str, failed: bool) -> String {
 <li>크롬: F12 → Application(애플리케이션) → Cookies → https://everytime.kr</li>
 <li><code>etsid</code> 줄의 Value 를 두 번 눌러 복사해서 위에 붙여넣어요.</li>
 </ol>
-<p class="hint">사파리는 설정 → 고급 → 웹 개발자용 기능 보기를 켠 뒤, 개발자용 → 웹 속성 보기 → 저장 공간 → 쿠키에 있어요.<br>30일 동안 쓸 수 있어요. 그 브라우저에서 로그아웃하면 바로 끊겨요.</p>
 </div>
 </details>
 <div class="row">
@@ -183,7 +179,6 @@ pub fn library_step(ticket: &str, failed: bool) -> String {
         &format!(
             r#"<main class="card">
 <div class="header">
-<span class="badge"><i></i>SSO 로그인 완료</span>
 <h1>도서관도 연결할까요?</h1>
 <p class="desc">열람실 자리와 스터디룸을 예약하려면 도서관 로그인이 필요해요.</p>
 </div>
