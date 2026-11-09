@@ -63,6 +63,9 @@ h1 small{font-size:14px;font-weight:500;color:var(--muted-foreground)}
 /// 폼 값이 만들어진 뒤에 잠그도록 한 박자 늦춥니다(잠근 버튼의 name 은 전송되지 않음).
 const SCRIPT: &str = r#"document.querySelectorAll("form").forEach(function(f){f.addEventListener("submit",function(e){var b=e.submitter||f.querySelector("button");setTimeout(function(){b.disabled=true},0)})})"#;
 
+/// "뒤로 가기" 버튼용. 기록이 있으면 한 단계 뒤로, 없으면 첫 화면으로 보냅니다.
+const BACK_SCRIPT: &str = r#"document.querySelector("[data-back]").addEventListener("click",function(){if(history.length>1){history.back()}else{location.assign("/")}})"#;
+
 fn hash(source: &str) -> String {
     format!(
         "'sha256-{}'",
@@ -73,9 +76,10 @@ fn hash(source: &str) -> String {
 /// 로그인 화면용 Content-Security-Policy
 pub static CSP: LazyLock<String> = LazyLock::new(|| {
     format!(
-        "default-src 'none'; style-src {}; script-src {}; form-action 'self' https://claude.ai http://localhost:* http://127.0.0.1:*; frame-ancestors 'none'; base-uri 'none'",
+        "default-src 'none'; style-src {}; script-src {} {}; form-action 'self' https://claude.ai http://localhost:* http://127.0.0.1:*; frame-ancestors 'none'; base-uri 'none'",
         hash(STYLE),
-        hash(SCRIPT)
+        hash(SCRIPT),
+        hash(BACK_SCRIPT)
     )
 });
 
@@ -200,10 +204,28 @@ pub fn library_step(ticket: &str, failed: bool) -> String {
 
 /// 로그인 실패·거부 화면
 pub fn message(title: &str, detail: &str) -> String {
+    card_message(title, detail, "")
+}
+
+/// `message` 와 같은 카드에 "뒤로 가기" 버튼을 덧붙인 화면.
+/// 로그인 창에서 뒤로 가기로 들어와 막다른 길이 된 안내에 씁니다.
+pub fn message_back(title: &str, detail: &str) -> String {
+    card_message(
+        title,
+        detail,
+        &format!(
+            r#"<div class="content"><button type="button" class="secondary" data-back>뒤로 가기</button></div><script>{BACK_SCRIPT}</script>"#
+        ),
+    )
+}
+
+/// 다른 카드들과 같은 헤더 레이아웃(제목 + 설명)을 재활용한 안내·오류 카드.
+/// `action` 에는 버튼 등 본문에 덧붙일 HTML 을 넣습니다(없으면 빈 문자열).
+fn card_message(title: &str, detail: &str, action: &str) -> String {
     document(
         title,
         &format!(
-            r#"<main class="card"><div class="content"><div class="alert error"><strong>{title}</strong><p>{detail}</p></div></div></main>"#
+            r#"<main class="card"><div class="header"><h1>{title}</h1><p class="desc">{detail}</p></div>{action}</main>"#
         ),
     )
 }

@@ -564,11 +564,13 @@ async fn repeated_callback(app: &App, ticket: &str) -> Option<Response> {
                 tokio::time::sleep(Duration::from_millis(200)).await;
             }
             SsoUsed::Next(_) => {
-                return Some(page(
-                    StatusCode::OK,
-                    "다른 화면에서 이어서 연결하고 있어요",
-                    "학교 로그인은 끝났어요. 먼저 열린 화면에서 계속해 주세요.",
-                ));
+                return Some(
+                    Html(crate::page::message_back(
+                        "다른 화면에서 이어서 연결하고 있어요",
+                        "학교 로그인은 끝났어요. 먼저 열린 화면에서 계속해 주세요.",
+                    ))
+                    .into_response(),
+                );
             }
             _ => {
                 return Some(page(
@@ -995,6 +997,13 @@ mod tests {
                 crate::page::message(
                     "처음부터 다시 연결해 주세요",
                     "보안을 위해 로그인 화면은 5분만 열려 있어요. Claude에서 연결을 다시 눌러 주세요.",
+                ),
+            ),
+            (
+                "7-continue-elsewhere.html",
+                crate::page::message_back(
+                    "다른 화면에서 이어서 연결하고 있어요",
+                    "학교 로그인은 끝났어요. 먼저 열린 화면에서 계속해 주세요.",
                 ),
             ),
         ];
