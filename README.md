@@ -1,205 +1,122 @@
-<h1 align="center">rusaint</h1>
-<p align="center" style="font-style: italic;">빠르고 간편하며 믿을 수 있는 숭실대학교 u-saint 클라이언트</p>
-<p align="center">
-    <a href="https://github.com/EATSTEAK/rusaint"><img alt="GitHub Badge" src="https://img.shields.io/badge/github-eatsteak/rusaint-8da0cb?style=for-the-badge&labelColor=555555&logo=github"></a>
-    <a href="https://crates.io/crates/rusaint"><img alt="crates.io" src="https://img.shields.io/crates/v/rusaint.svg?style=for-the-badge&color=fc8d62&logo=rust"></a>
-    <a href="https://docs.rs/rusaint"><img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-rusaint-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs"></a>
-   <a href="https://github.com/EATSTEAK/rusaint/LICENSE.md"><img alt="License" src="https://img.shields.io/github/license/EATSTEAK/rusaint?style=for-the-badge"></a>
-</p>
+<h1 align="center">rusaint-mcp</h1>
+<p align="center"><i>숭실대학교 u-saint·LMS·도서관·에브리타임을 Claude 등 MCP 클라이언트에서 쓰는 서버</i></p>
 
 ---
 
-rusaint(_ru-saint, 루세인트_)는 [숭실대학교 u-saint](https://saint.ssu.ac.kr)를 정확하고 빠르게, 간편하게 파싱하고 다양한 환경에서 조작할 수 있는 Rust 기반 비공식
-u-saint 클라이언트입니다.
+rusaint-mcp 는 [rusaint](https://github.com/EATSTEAK/rusaint)(숭실대 u-saint Rust 클라이언트) 위에
+숭실대의 학사·학습·생활 기능을 **[Model Context Protocol](https://modelcontextprotocol.io) 도구**로 노출하는 서버입니다.
+Claude 데스크톱/모바일, Claude Code, Codex 등 MCP 를 지원하는 클라이언트에 붙여 "이번 학기 성적 알려줘",
+"빈 열람실 좌석 잡아줘", "이 과목 강의평 보여줘" 같은 요청을 자연어로 처리합니다.
 
-u-saint의 기반인 [SAP Web Dynpro](https://en.wikipedia.org/wiki/Web_Dynpro)에서 사용하는 Lightspeed 라이브러리의 최소 동작을 구현하여 안전하게
-u-saint 내부 요소들을 조작하고 파싱할 수 있습니다.
+- **로컬(stdio) · 원격(HTTP) 둘 다** — 내 컴퓨터에서 stdio 로 쓰거나, 서버로 띄워 모바일 Claude 원격 커넥터로 연결합니다.
+- **비밀번호를 서버에 두지 않음** — 기본 로그인은 학교 SmartID 화면에서 직접 하고, 서버는 단기 세션 토큰만 받습니다.
+- **JS 런타임 불필요** — rusaint 가 u-saint(SAP Web Dynpro)를 네이티브로 파싱해 빠릅니다.
 
-- **JS 런타임 없음** — JS 런타임 없이 자체적으로 요청과 응답에 따른 처리를 수행하므로 HTTPS 요청이 가능한 모든 환경에서 실행 가능합니다.
-- **빠른 속도** — 네이티브 환경으로 컴파일되는 Rust를 이용하고, 휴리스틱 없이 요청이 완료되면 곧바로 실행되어 빠르게 u-saint 를 조작 및 파싱 가능합니다.
-- **멀티플랫폼 지원** — UniFFI를 통한 Kotlin, Swift, React-Native, Python 지원을 제공하여 다양한 플랫폼에서 간편하게 이용할 수 있습니다.
-- **간편한 기능 정의** — rusaint 에서 지원하지 않는 u-saint 애플리케이션에 대한 파싱 및 지원을 제공하는 API를 이용해 간편하게 정의할 수 있습니다.
+## 기능 (48개 도구)
 
-## 설치
+### u-saint 학사정보 — 학교 로그인 필요
+| 도구 | 설명 |
+|---|---|
+| `usaint_student_info` | 학적 기본 정보(학과·전공·학년·학기)와 변동 이력 |
+| `usaint_timetable` | 개인 시간표 (요일·교시·강의실) |
+| `usaint_registered_lectures` | 수강신청 내역 (과목·학점·교수·분반) |
+| `usaint_grades_summary` | 학부 성적 요약(평점·이수학점)과 학기별 성적 |
+| `usaint_semester_grades` | 특정 학기의 과목별 성적 |
+| `usaint_scholarships` | 장학금 수혜 내역 |
+| `usaint_graduation` | 졸업사정표: 이수 구분별 기준·취득 학점, 남은 요건 |
+| `usaint_graduation_plan` | 못 채운 졸업 요건과 채울 수 있는 강의 후보 |
+| `usaint_major_curriculum` | 입학년도별 공식 교과과정표 (학년·학기·이수구분) |
+| `usaint_course_search` | 강의시간표 검색 (과목·교수·교양·채플 등) |
+| `usaint_course_info` | 과목별 여석·P/F·평가 방식·전공 인정 여부 |
+| `usaint_course_options` | 강의 검색용 단과대·학부·전공·교양 분야 목록 |
+| `usaint_chapel` | 채플 이수 현황(출결·유고결석·성적)과 기준 계산 |
 
-```bash
-cargo add rusaint
-```
+### LMS (유비온) — 학교 로그인 필요
+| 도구 | 설명 |
+|---|---|
+| `lms_courses` | 학기 목록과 수강 강의(교수·수강 상태) |
+| `lms_materials` | 주차별 자료·영상·과제·퀴즈와 완료 여부 |
+| `lms_todos` | 미제출 과제·퀴즈·미시청 영상과 마감 |
+| `lms_announcements` / `lms_announcement` | 강의 공지 목록 / 본문 |
+| `lms_boards` / `lms_posts` / `lms_post` / `lms_comments` | 과목 게시판·글·댓글 |
+| `lms_download_material` | 강의 자료 파일 내려받기 |
+| `lms_download_post_attachment` | 게시판 첨부파일 내려받기 |
 
-## CLI
+### 도서관 (oasis) — 도서관 로그인 필요
+| 도구 | 설명 |
+|---|---|
+| `library_my_status` | 내 대출·좌석·스터디룸 현황 (반납·연장용 id 포함) |
+| `library_seat_rooms` / `library_seats` | 열람실별 좌석 수 / 빈 좌석 목록 |
+| `library_study_rooms` | 날짜별 스터디룸 빈 시간대 |
+| `library_check_companion` | 스터디룸 동반 이용자 확인 |
+| `prepare_library_seat_action` | 좌석 배정·반납·연장 준비 |
+| `prepare_library_room_reservation` / `prepare_library_room_action` | 스터디룸 예약 / 취소·연장 준비 |
+| `confirm_library_action` | 준비하고 동의한 도서관 작업 실행 |
+| `library_auto_renew` / `library_auto_renew_status` / `library_stop_auto_renew` | 좌석·스터디룸 자동 연장 |
 
-<a href="https://crates.io/crates/rusaint-cli"><img alt="crates.io" src="https://img.shields.io/crates/v/rusaint-cli.svg?style=for-the-badge&color=fc8d62&logo=rust&label=rusaint-cli"></a>
+### 에브리타임 강의평 — 에타 쿠키 필요
+| 도구 | 설명 |
+|---|---|
+| `everytime_search_lectures` | 강의평 등록된 과목 검색(과목명·교수명) |
+| `everytime_lecture_reviews` | 한 과목의 강의평(집계 + 최근 후기) |
+| `everytime_relink` | 세션 만료 시 학교 로그인 없이 에타만 다시 연결하는 링크 발급 |
 
-터미널에서 바로 u-saint 학사 정보를 조회할 수 있는 CLI 도구를 제공합니다.
+### SSU-PATH 비교과 — 학교 로그인 필요
+| 도구 | 설명 |
+|---|---|
+| `path_programs` | 지금 모집 중이고 내 학년이 신청 가능한 비교과 프로그램 |
+| `path_program_detail` | 프로그램 상세(대상·선정·정원·일정) |
+| `path_mileage` | 비교과 마일리지(누적·획득·사용·잔여·내역) |
 
-```bash
-cargo install rusaint-cli
-```
+### 로그인 없이 쓰는 도구
+| 도구 | 설명 |
+|---|---|
+| `get_meals` / `get_dorm_meals` / `get_cafeteria_hours` | 교내·기숙사 식단과 식당 운영 시간 |
+| `school_regulation` | 규정집(학사·장학·졸업 요건·타 학과 전공 인정 등) |
+| `academic_calendar` | 학사일정(수강신청·개강·시험·휴복학·성적 공개) |
+| `login` | 로그인 방법 안내 |
 
-```bash
-# 강의 검색
-rusaint course-schedule by-lecture -y 2025 -s 1 -k "대학글쓰기"
+## 빠른 시작
 
-# 성적 조회
-rusaint grades recorded-summary
-
-# 수강신청 내역
-rusaint registration lectures -y 2025 -s 1
-
-# 장학금 조회
-rusaint scholarships list
-
-# JSON 출력
-rusaint --format json student-info general
-```
-
-> 자세한 사용법은 [packages/rusaint-cli/README.md](/packages/rusaint-cli/README.md)를 참고하세요.
-
-## 문서
-
-[docs.rs](https://docs.rs/rusaint)
-
-## 예시
-
-```rust
-use rusaint::application::course_grades::{CourseGradesApplication, model::{CourseType}};
-use rusaint::client::USaintClientBuilder;
-use rusaint::USaintSession;
-use rusaint::RusaintError;
-use std::sync::Arc;
-
-// 성적 정보를 출력하는 애플리케이션
-#[tokio::main]
-async fn main() -> Result<(), RusaintError> {
-    print_grades().await
-    /* SemesterSummary { year: 2022, semester: "2 학기", attempted_credits: 17.5, earned_credits: 17.5, pf_earned_credits: 0.5, grade_points_average: 4.5, grade_points_sum: 100.0, arithmetic_mean: 100.0, semester_rank: (1, 99), general_rank: (1, 99), academic_probation: false, consult: false, flunked: false }
-     * ...
-     */
-}
-
-async fn print_grades() -> Result<(), RusaintError> {
-    // USaintSession::from_token(id: &str, token: &str) 을 이용하여 비밀번호 없이 SSO 토큰으로 로그인 할 수 있음
-    let session = Arc::new(USaintSession::with_password("20211561", "password").await?);
-    let mut app = USaintClientBuilder::new().session(session).build_into::<CourseGradesApplication>().await?;
-    let grades: Vec<SemesterGrade> = app.semesters(CourseType::Bachelor).await?;
-    for grade in grades {
-        println!("{:?}", grade);
-    }
-    Ok(())
-}
-```
-
-## 개발
-
-개발 및 테스트를 위해 아래와 같은 요구사항이 필요합니다:
-
-- `SSO_ID`, `SSO_PASSWORD` 환경 변수 (숭실대학교 SSO ID/비밀번호)
-- `TARGET_YEAR`, `TARGET_SEMESTER` 환경 변수 (학년도/학기, 예시: `2022`, `1`)
-- 테스트를 실행하기 전에, `cargo run -p rusaint-cli -- create-session -o session.json`을 실행하여 세션을 파일로 생성하여야 합니다 (사용하는 쉘에 따라 정확한 명령어는 달라질 수 있습니다).
-  - 세션 파일 경로를 변경하고 싶다면, `SSO_SESSION_FILE` 환경 변수에 경로를 입력하여 변경할 수 있습니다.
-- `rusaint`는 빠른 테스트 실행을 위해 `cargo-nextest`를 사용합니다. (`cargo install cargo-nextest`를 통해 설치할 수 있습니다)
-- `cargo nextest run` 을 실행하여 테스트를 실행합니다.
-
-자세한 정보는 아래 문서를 참고하세요.
-
-- [Application 작성](/docs/APPLICATION-IMPLS.md)
-- [배포 환경 설정](/docs/DEPLOYMENT.md)
-
-## 멀티 플랫폼
-
-rusaint는 [uniffi](https://github.com/mozilla/uniffi-rs)를 이용한 FFI 멀티플랫폼을 지원합니다. 현재 지원하는 플랫폼은 다음과 같습니다.
-
-- Android (Kotlin)
-- iOS (Swift)
-- React Native
-- Python
-
-### Android (Kotlin)
-
-<a href="https://central.sonatype.com/artifact/dev.eatsteak/rusaint"><img alt="Maven Central Version" src="https://img.shields.io/maven-central/v/dev.eatsteak/rusaint?style=for-the-badge&logo=apachemaven&color=C71A36">
-</a>
-
-#### Maven Central에서 설치하기
-
-1. Maven Central을 gradle 저장소에 추가
-
-```kotlin
-repositories {
-  mavenCentral()
-  // ... any other repositories
-}
-```
-
-2. rusaint를 의존성에 추가
-
-```kotlin
-dependencies {
-  implementation("dev.eatsteak:rusaint:0.16.3")
-}
-```
-
-#### 소스 코드에서 빌드
-
-[languages/kotlin](/languages/kotlin) 내부의 README.md 파일을 참고하세요.
-
-### iOS (Swift)
-
-<a href="https://github.com/EATSTEAK/rusaint-ios"><img alt="SwiftPM Release" src="https://img.shields.io/github/v/release/eatsteak/rusaint-ios?style=for-the-badge&logo=swift&label=SwiftPM&color=F05138">
-</a>
-<img alt="Swift Compatibility" src="https://img.shields.io/badge/Compatibility-5.x-F05138?style=for-the-badge&logo=swift">
-<img alt="Swift Targets" src="https://img.shields.io/badge/Target-iOS-F05138?style=for-the-badge&logo=swift">
-
-#### SPM을 이용하여 설치
-
-[SPM 레포지토리](https://github.com/EATSTEAK/rusaint-ios)로 설치할 수 있습니다.
-
-#### 소스 코드에서 빌드
-
-[languages/swift](/languages/swift) 내부의 build.sh 파일을 실행하여 .xcframework 형태로 빌드할 수 있습니다.
-
-### React Native (Turbo Module)
-
-<a href="https://www.npmjs.com/package/@rusaint/react-native"><img alt="NPM Distribution" src="https://img.shields.io/npm/v/%40rusaint%2Freact-native?style=for-the-badge&logo=npm&color=CB3837"></a>
-
-#### 패키지 매니저를 이용하여 설치
+### 로컬 (stdio)
 
 ```bash
-pnpm add @rusaint/react-native # or yarn, npm
+cargo install --path packages/rusaint-mcp
+# 계정 설정 (비밀번호는 화면에 표시되지 않습니다)
+rusaint-mcp login            # sso / library / everytime 개별 설정도 가능
+rusaint-mcp login status
 ```
 
-##### Expo에서 사용하기
+MCP 클라이언트에 stdio 서버로 등록합니다. 예) Claude Code · Codex:
 
-`@rusaint/react-native` 는 네이티브 바이너리를 사용합니다. React Native Community Autolink 및 Expo Autolink를 사용한 자동 링킹을 지원하므로 별개의 설정은 필요하지 않으나, Expo Go를 사용할 수 없음에 주의하시길 바랍니다.
+```toml
+# ~/.codex/config.toml
+[mcp_servers.rusaint]
+command = "/path/to/.cargo/bin/rusaint-mcp"
+```
 
-#### 소스 코드에서 빌드
+설정 후 앱을 다시 시작하세요. 계정은 macOS Keychain 에 저장되며, 로그인에 성공한 것만 보관합니다.
+
+### 원격 (모바일 Claude 커넥터)
+
+모바일 Claude 는 Anthropic 클라우드에서 서버로 접속하므로, 항상 떠 있는 서버와 HTTPS 주소가 필요합니다.
 
 ```bash
-# ./languages/react-native
-yarn install
-yarn ubrn:release-build # REQUIREMENTS: Cargo and android/ios targets for building rust binaries
-yarn prepare # Run codegen
+cargo build --release -p rusaint-mcp
+RUSAINT_MCP_PUBLIC_URL=https://mcp.example.com \
+  RUSAINT_ALLOWED_IDS=20240000 \
+  RUSAINT_MCP_BIND=127.0.0.1:3000 \
+  ./target/release/rusaint-mcp serve
 ```
 
-### Python
+서버 구성·배포·보안 주의사항은 [`packages/rusaint-mcp/README.md`](packages/rusaint-mcp/README.md) 를 참고하세요.
 
-<a href="https://pypi.org/project/rusaint/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/rusaint?style=for-the-badge&logo=pypi&color=3775A9"></a>
+## 배포
 
-#### PyPI에서 설치
+`mcp-v*` 태그를 push 하면 GitHub Actions 가 리눅스 바이너리를 빌드해 Release 로 올리고,
+서버는 `update.timer` 로 최신 릴리스를 받아 자동 교체합니다. 자세한 건
+[`packages/rusaint-mcp/deploy`](packages/rusaint-mcp/deploy) 를 참고하세요.
 
-```bash
-# Using pip
-pip install rusaint
-# Using uv
-uv add rusaint
-```
+## 라이선스
 
-#### 소스 코드에서 빌드
-
-rusaint는 [maturin](https://www.maturin.rs/)을 사용하여 Python wheel을 빌드합니다.
-
-```bash
-# ./languages/python
-# with uv
-uv tool install maturin
-uvx maturin build --release --out dist --find-interpreter # Creates an release wheel in ./dist directory
-```
+MIT. u-saint 파싱 코어는 [EATSTEAK/rusaint](https://github.com/EATSTEAK/rusaint) 를 따릅니다.
