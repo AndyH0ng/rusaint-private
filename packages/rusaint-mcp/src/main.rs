@@ -6,6 +6,7 @@
 mod automation;
 mod chapel;
 mod courses;
+mod files;
 mod keychain;
 mod login;
 mod page;

@@ -68,6 +68,8 @@ pub struct LmsClient {
     sso: Arc<SsoCredentials>,
     session: Mutex<Option<Session>>,
     api: reqwest::Client,
+    /// 파일 내려받기용. 큰 영상도 끝까지 받도록 전체 시간 제한 대신 연결·읽기 제한만 둡니다.
+    files: reqwest::Client,
 }
 
 impl LmsClient {
@@ -77,10 +79,16 @@ impl LmsClient {
             .user_agent(USER_AGENT)
             .timeout(REQUEST_TIMEOUT)
             .build()?;
+        let files = reqwest::Client::builder()
+            .user_agent(USER_AGENT)
+            .connect_timeout(REQUEST_TIMEOUT)
+            .read_timeout(REQUEST_TIMEOUT)
+            .build()?;
         Ok(Self {
             sso,
             session: Mutex::new(None),
             api,
+            files,
         })
     }
 
@@ -478,6 +486,12 @@ impl LmsClient {
     /// commons 자료 파일을 `dest` 에 저장하고 바이트 수를 돌려줍니다.
     /// 실측상 commons 는 로그인 없이 `content_id` 만으로 내려받을 수 있습니다.
     pub async fn download(&self, content_id: &str, dest: &Path) -> Result<u64, LmsError> {
+        let response = self.open_material(content_id).await?;
+        save(response, dest).await
+    }
+
+    /// 자료 파일 응답을 엽니다. 본문은 호출한 쪽이 스트림으로 읽습니다(디스크에 쓰지 않음).
+    pub async fn open_material(&self, content_id: &str) -> Result<reqwest::Response, LmsError> {
         let xml = self
             .api
             .get(format!(
@@ -501,8 +515,7 @@ impl LmsClient {
                 "{content_id}: 예상하지 못한 주소"
             )));
         }
-
-        self.save(url, dest).await
+        Ok(self.files.get(url).send().await?.error_for_status()?)
     }
 
     /// 게시글 하나 (본문 텍스트와 첨부 목록). 실측상 이 조회는 조회수·읽음 표시를 바꾸지 않습니다.
@@ -528,6 +541,15 @@ impl LmsClient {
         attachment: &Attachment,
         dest: &Path,
     ) -> Result<u64, LmsError> {
+        let response = self.open_attachment(attachment).await?;
+        save(response, dest).await
+    }
+
+    /// 게시판 첨부파일 응답을 엽니다. 본문은 호출한 쪽이 스트림으로 읽습니다.
+    pub async fn open_attachment(
+        &self,
+        attachment: &Attachment,
+    ) -> Result<reqwest::Response, LmsError> {
         let url = Url::parse(&attachment.url)
             .map_err(|_| LmsError::NoDownload(attachment.filename.clone()))?;
         if url.scheme() != "https" || url.host_str() != Some("canvas.ssu.ac.kr") {
@@ -536,28 +558,27 @@ impl LmsClient {
                 attachment.filename
             )));
         }
-        self.save(url, dest).await
+        Ok(self.files.get(url).send().await?.error_for_status()?)
     }
+}
 
-    /// 응답을 `<dest>.part` 에 받은 뒤 완료되면 이름을 바꿉니다.
-    async fn save(&self, url: Url, dest: &Path) -> Result<u64, LmsError> {
-        let mut response = self.api.get(url).send().await?.error_for_status()?;
-        if let Some(parent) = dest.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-        let mut partial = dest.as_os_str().to_owned();
-        partial.push(".part");
-        let partial = std::path::PathBuf::from(partial);
-        let mut file = tokio::fs::File::create(&partial).await?;
-        let mut written = 0u64;
-        while let Some(chunk) = response.chunk().await? {
-            file.write_all(&chunk).await?;
-            written += chunk.len() as u64;
-        }
-        file.flush().await?;
-        tokio::fs::rename(&partial, dest).await?;
-        Ok(written)
+/// 응답을 `<dest>.part` 에 받은 뒤 완료되면 이름을 바꿉니다.
+async fn save(mut response: reqwest::Response, dest: &Path) -> Result<u64, LmsError> {
+    if let Some(parent) = dest.parent() {
+        tokio::fs::create_dir_all(parent).await?;
     }
+    let mut partial = dest.as_os_str().to_owned();
+    partial.push(".part");
+    let partial = std::path::PathBuf::from(partial);
+    let mut file = tokio::fs::File::create(&partial).await?;
+    let mut written = 0u64;
+    while let Some(chunk) = response.chunk().await? {
+        file.write_all(&chunk).await?;
+        written += chunk.len() as u64;
+    }
+    file.flush().await?;
+    tokio::fs::rename(&partial, dest).await?;
+    Ok(written)
 }
 
 /// from_cc 페이지의 `/login/canvas` 자동 제출 폼에서 (name, value) 를 꺼냅니다.

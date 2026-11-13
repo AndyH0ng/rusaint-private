@@ -87,6 +87,8 @@ struct App {
     data: Arc<Mutex<Data>>,
     /// 에타 쿠키만 다시 받는 재연결 링크 발급기. 모든 연결이 공유합니다.
     relink: crate::server::Relink,
+    /// LMS 파일 다운로드 링크. 모든 연결이 공유합니다.
+    files: crate::files::FileLinks,
 }
 #[derive(Default)]
 struct Data {
@@ -176,6 +178,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let base = base.trim_end_matches('/').to_string();
     let app = App {
         relink: crate::server::Relink::new(base.clone()),
+        files: crate::files::FileLinks::new(base.clone()),
         base,
         allowed: Arc::new(allowed),
         sso_open,
@@ -218,6 +221,7 @@ fn router(app: App) -> Router {
         .route("/sso/everytime", post(sso_everytime))
         .route("/everytime/relink/{ticket}", get(everytime_relink_form))
         .route("/everytime/relink", post(everytime_relink_submit))
+        .route("/files/{ticket}", get(file_download))
         .route("/token", post(token))
         .route("/mcp", any(mcp))
         .layer(axum::middleware::map_response(
@@ -236,8 +240,10 @@ fn router(app: App) -> Router {
                 let (method, mut path) =
                     (request.method().clone(), request.uri().path().to_owned());
                 // 경로의 1회용 티켓은 남기지 않습니다.
-                if path.starts_with("/sso/callback/") {
-                    path = "/sso/callback/…".into();
+                for prefix in ["/sso/callback/", "/everytime/relink/", "/files/"] {
+                    if path.starts_with(prefix) {
+                        path = format!("{prefix}…");
+                    }
                 }
                 let response = next.run(request).await;
                 eprintln!("{method} {path} -> {}", response.status().as_u16());
@@ -740,6 +746,7 @@ async fn sso_everytime(
     };
     let mut server = SsuServer::authenticated(sso, library, everytime).map_err(|_| invalid())?;
     server.set_relink(app.relink.clone());
+    server.set_files(app.files.clone());
     server.spawn_keepalive();
     issue_code(&app, auth, server).await
 }
@@ -769,7 +776,10 @@ struct RelinkFinish {
 }
 
 /// 에타 쿠키만 받아 해당 연결의 에타 슬롯을 교체합니다. SSO·도서관은 건드리지 않습니다.
-async fn everytime_relink_submit(State(app): State<App>, Form(req): Form<RelinkFinish>) -> Response {
+async fn everytime_relink_submit(
+    State(app): State<App>,
+    Form(req): Form<RelinkFinish>,
+) -> Response {
     let Some(cell) = app.relink.get(&req.ticket) else {
         return relink_expired();
     };
@@ -804,6 +814,50 @@ async fn everytime_relink_submit(State(app): State<App>, Form(req): Form<RelinkF
         )
             .into_response(),
     }
+}
+
+/// LMS 파일을 그대로 흘려보냅니다. 서버 디스크에는 쓰지 않습니다.
+/// 링크 자체가 권한이라 10분 안에 링크를 가진 사람은 이 파일 하나만 받을 수 있습니다.
+async fn file_download(State(app): State<App>, Path(ticket): Path<String>) -> Response {
+    let Some(link) = app.files.get(&ticket) else {
+        return page(
+            StatusCode::NOT_FOUND,
+            "링크가 만료됐어요",
+            "다운로드 링크는 10분만 쓸 수 있어요. Claude에게 다시 받아 달라고 해 주세요.",
+        );
+    };
+    let response = match link.target.open(&link.lms).await {
+        Ok(response) => response,
+        Err(e) => {
+            eprintln!("파일 다운로드 실패: {e}");
+            return page(
+                StatusCode::BAD_GATEWAY,
+                "파일을 가져오지 못했어요",
+                "LMS에서 파일을 받지 못했어요. 잠시 후 다시 시도해 주세요.",
+            );
+        }
+    };
+    let content_type = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .filter(|v| !v.starts_with("text/html"))
+        .unwrap_or("application/octet-stream")
+        .to_string();
+    let length = response.content_length();
+    let mut builder = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(
+            header::CONTENT_DISPOSITION,
+            crate::files::content_disposition(&link.filename),
+        );
+    if let Some(length) = length {
+        builder = builder.header(header::CONTENT_LENGTH, length);
+    }
+    builder
+        .body(axum::body::Body::from_stream(response.bytes_stream()))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
 /// 로그인을 마친 서버를 인증 코드에 묶고 앱의 콜백으로 돌려보냅니다.
@@ -973,7 +1027,44 @@ mod tests {
             sso_open: false,
             data: Arc::default(),
             relink: crate::server::Relink::new("https://mcp.example.com"),
+            files: crate::files::FileLinks::new("https://mcp.example.com"),
         }
+    }
+
+    #[tokio::test]
+    async fn unknown_file_tickets_show_expiry_page() {
+        let response = router(app())
+            .oneshot(
+                Request::builder()
+                    .uri("/files/not-a-ticket")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert!(String::from_utf8_lossy(&body).contains("링크가 만료됐어요"));
+    }
+
+    #[tokio::test]
+    async fn file_links_resolve_until_expiry() {
+        let links = crate::files::FileLinks::new("https://mcp.example.com");
+        let sso = rusaint_sso::SsoCredentials::new("20240000", "x");
+        let lms = Arc::new(rusaint_lms::LmsClient::new(sso).unwrap());
+        let url = links.mint(
+            lms,
+            crate::files::FileTarget::Material("abc".into()),
+            "1주차.pdf".into(),
+        );
+        let ticket = url.strip_prefix("https://mcp.example.com/files/").unwrap();
+        assert_eq!(ticket.len(), 64);
+        assert_eq!(links.get(ticket).unwrap().filename, "1주차.pdf");
+        assert!(
+            links.get(ticket).is_some(),
+            "만료 전에는 여러 번 받을 수 있어야 합니다"
+        );
+        assert!(links.get("other").is_none());
     }
 
     #[test]

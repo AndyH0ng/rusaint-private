@@ -39,8 +39,10 @@ Claude 데스크톱/모바일, Claude Code, Codex 등 MCP 를 지원하는 클�
 | `lms_todos` | 미제출 과제·퀴즈·미시청 영상과 마감 |
 | `lms_announcements` / `lms_announcement` | 강의 공지 목록 / 본문 |
 | `lms_boards` / `lms_posts` / `lms_post` / `lms_comments` | 과목 게시판·글·댓글 |
-| `lms_download_material` | 강의 자료 파일 내려받기 |
-| `lms_download_post_attachment` | 게시판 첨부파일 내려받기 |
+| `lms_download_material` | 강의 자료 파일 내려받기 (원격에서는 10분짜리 다운로드 링크) |
+| `lms_download_post_attachment` | 게시판 첨부파일 내려받기 (원격에서는 10분짜리 다운로드 링크) |
+| `lms_read_material` | 강의 자료 내용 읽기 (Markdown 텍스트, PDF 페이지 이미지) |
+| `lms_read_post_attachment` | 게시판 첨부파일 내용 읽기 |
 
 ### 도서관 (oasis) — 도서관 로그인 필요
 | 도구 | 설명 |

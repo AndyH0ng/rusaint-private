@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::{Local, NaiveDate, NaiveTime, Timelike};
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
-use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
+use rmcp::model::{CallToolResult, Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{ServerHandler, schemars, tool, tool_handler, tool_router};
 use rusaint::application::chapel::ChapelApplication;
 use rusaint::application::course_grades::CourseGradesApplication;
@@ -30,6 +30,7 @@ use tokio::sync::OnceCell;
 use crate::automation::{Automation, MAX_RENEW_HOURS};
 use crate::chapel;
 use crate::courses::{self, Kind};
+use crate::files::{self, Doc, DocCache, FileLinks, FileTarget, Range, ReadFormat};
 use crate::keychain;
 use crate::pending::{Action, Pending};
 use crate::usaint::{self, Usaint};
@@ -379,6 +380,35 @@ pub struct AttachmentRequest {
     pub attachment_id: u64,
 }
 
+/// 읽기 범위와 형식
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+pub struct ReadOptions {
+    /// 읽을 페이지(슬라이드) 범위. 예: "3", "3-7", "10-". 생략하면 처음부터 읽습니다.
+    pub pages: Option<String>,
+    /// text(기본, Markdown 텍스트) · images(PDF 페이지 PNG, 한 번에 5쪽) · pdf(PDF 원본, 실험용)
+    pub format: Option<ReadFormat>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReadMaterialRequest {
+    pub course_id: u64,
+    /// lms_materials 의 material.content_id
+    pub content_id: String,
+    #[serde(flatten)]
+    pub options: ReadOptions,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReadAttachmentRequest {
+    pub course_id: u64,
+    pub board_id: u64,
+    pub post_id: u64,
+    /// lms_post 의 attachments[].id
+    pub attachment_id: u64,
+    #[serde(flatten)]
+    pub options: ReadOptions,
+}
+
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DownloadRequest {
     pub course_id: u64,
@@ -397,7 +427,9 @@ const RELINK_TTL: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 #[derive(Clone)]
 pub struct Relink {
     base: Arc<str>,
-    tickets: Arc<std::sync::Mutex<std::collections::HashMap<String, (EverytimeCell, std::time::Instant)>>>,
+    tickets: Arc<
+        std::sync::Mutex<std::collections::HashMap<String, (EverytimeCell, std::time::Instant)>>,
+    >,
 }
 
 impl Relink {
@@ -451,6 +483,10 @@ pub struct SsuServer {
     remote: bool,
     /// 원격 연결에서 에타 전용 재연결 링크를 발급하는 핸들. 로컬 연결은 `None`.
     relink: Option<Relink>,
+    /// 원격 연결에서 LMS 파일 다운로드 링크를 발급하는 핸들. 로컬 연결은 `None`.
+    files: Option<FileLinks>,
+    /// 마지막으로 읽은 LMS 파일 (이어 읽기용)
+    docs: Arc<tokio::sync::Mutex<DocCache>>,
     /// 이 연결의 모든 복사본이 사라지면 keep-alive 도 멈추도록 약한 참조로만 봅니다.
     alive: Arc<()>,
 }
@@ -475,6 +511,8 @@ impl SsuServer {
             tool_router: Self::tool_router(),
             remote: false,
             relink: None,
+            files: None,
+            docs: Arc::default(),
             alive: Arc::new(()),
         })
     }
@@ -502,9 +540,16 @@ impl SsuServer {
         self.relink = Some(relink);
     }
 
+    /// 원격 연결에 LMS 파일 다운로드 링크 발급 핸들을 붙입니다.
+    pub fn set_files(&mut self, files: FileLinks) {
+        self.files = Some(files);
+    }
+
     /// 에타 세션(쿠키)이 만료됐을 때 쓰는 재연결 URL 을 발급합니다. 원격 연결에서만 동작합니다.
     pub fn everytime_relink_url(&self) -> Option<String> {
-        self.relink.as_ref().map(|relink| relink.mint(self.everytime.clone()))
+        self.relink
+            .as_ref()
+            .map(|relink| relink.mint(self.everytime.clone()))
     }
 
     /// SSO 토큰으로 연결한 경우 u-saint·LMS·SSU-PATH 세션을 미리 열고 10분마다 다시 로그인하지 않고 확인합니다.
@@ -669,6 +714,98 @@ impl SsuServer {
             .get_or_try_init(|| async { Ok::<_, String>(Arc::new(PathClient::new(sso))) })
             .await
             .cloned()
+    }
+
+    /// 강의 자료를 찾아 (대상, 파일 이름, 자료 종류) 를 돌려줍니다.
+    async fn lms_material(
+        &self,
+        client: &LmsClient,
+        course_id: u64,
+        content_id: &str,
+    ) -> Result<(FileTarget, String, String), String> {
+        let modules = client.modules(course_id).await.map_err(|e| e.to_string())?;
+        let (item, material) = modules
+            .iter()
+            .flat_map(|m| &m.module_items)
+            .find_map(|i| {
+                i.material()
+                    .filter(|m| m.content_id == content_id)
+                    .map(|m| (i, m))
+            })
+            .ok_or("이 강의에서 해당 자료를 찾을 수 없습니다")?;
+        let file_name = material
+            .file_name
+            .clone()
+            .unwrap_or_else(|| format!("{}.{}", item.title, material.kind));
+        Ok((
+            FileTarget::Material(material.content_id),
+            safe_name(&file_name),
+            material.kind,
+        ))
+    }
+
+    /// 게시글 첨부파일을 찾아 (첨부파일, 글 제목) 을 돌려줍니다.
+    async fn lms_attachment(
+        &self,
+        client: &LmsClient,
+        course_id: u64,
+        board_id: u64,
+        post_id: u64,
+        attachment_id: u64,
+    ) -> Result<(rusaint_lms::Attachment, String), String> {
+        let post = client
+            .post(course_id, board_id, post_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let attachment = post
+            .attachments
+            .into_iter()
+            .find(|a| a.id == attachment_id)
+            .ok_or("이 글에 해당 첨부파일이 없습니다")?;
+        Ok((attachment, post.title))
+    }
+
+    /// 원격 연결이면 다운로드 링크를 만들어 돌려줍니다.
+    fn file_link(
+        &self,
+        client: Arc<LmsClient>,
+        target: FileTarget,
+        filename: String,
+    ) -> ToolResult {
+        let links = self.files.as_ref().ok_or(
+            "이 연결에서는 다운로드 링크를 만들 수 없습니다. 커넥터를 다시 연결해 주세요.",
+        )?;
+        let url = links.mint(client, target, filename.clone());
+        to_json(&json!({
+            "download_url": url,
+            "filename": filename,
+            "expires_in_minutes": files::LINK_TTL.as_secs() / 60,
+            "note": "이 링크를 사용자에게 그대로 보여 주세요. 10분 동안 유효하고 링크를 가진 사람은 누구나 받을 수 있으니 다른 곳에 옮기지 마세요. 내용을 읽어야 하면 lms_read_* 도구를 쓰세요.",
+        }))
+    }
+
+    /// 파일을 받아(또는 캐시에서 꺼내) 읽을 형태로 바꿉니다.
+    async fn read_file(
+        &self,
+        key: String,
+        client: &LmsClient,
+        target: FileTarget,
+        filename: String,
+        options: ReadOptions,
+    ) -> Result<CallToolResult, String> {
+        let range = Range::parse(options.pages.as_deref())?;
+        let format = options.format.unwrap_or_default();
+        let cached = self.docs.lock().await.get(&key);
+        let doc = match cached {
+            Some(doc) => doc,
+            None => {
+                let bytes = files::fetch(client, &target).await?;
+                let doc = Arc::new(Doc::new(filename, bytes));
+                self.docs.lock().await.put(key, doc.clone());
+                doc
+            }
+        };
+        files::render(&doc, range, format).await
     }
 
     /// 현재 학기 강의 이름 (다운로드 폴더 이름용). 못 찾으면 강의 id 를 씁니다.
@@ -1752,8 +1889,9 @@ impl SsuServer {
         )
     }
 
-    /// 과목 게시판 첨부파일을 ~/Downloads/ssu-lms/<강의명>/게시판/ (또는 RUSAINT_DOWNLOAD_DIR) 에 내려받습니다.
-    /// 같은 이름의 파일이 있으면 덮어쓰지 않습니다. 다른 학생이 올린 파일일 수 있으니 요청받은 파일만 받으세요.
+    /// 과목 게시판 첨부파일을 내려받습니다. 로컬에서는 ~/Downloads/ssu-lms/<강의명>/게시판/ (또는 RUSAINT_DOWNLOAD_DIR) 에 저장하고(같은 이름이 있으면 덮어쓰지 않음),
+    /// 원격 커넥터에서는 10분짜리 다운로드 링크(download_url)를 돌려주니 사용자에게 그대로 보여 주세요. 내용을 읽으려면 lms_read_post_attachment 를 쓰세요.
+    /// 다른 학생이 올린 파일일 수 있으니 요청받은 파일만 받으세요.
     #[tool(annotations(
         read_only_hint = false,
         destructive_hint = false,
@@ -1763,37 +1901,39 @@ impl SsuServer {
         &self,
         Parameters(req): Parameters<AttachmentRequest>,
     ) -> ToolResult {
-        if self.remote {
-            return Err("원격 커넥터에서는 서버 파일시스템에 자료를 다운로드할 수 없습니다. LMS에서 직접 다운로드하세요.".into());
-        }
         let client = self.lms().await?;
-        let post = client
-            .post(req.course_id, req.board_id, req.post_id)
-            .await
-            .map_err(|e| e.to_string())?;
-        let attachment = post
-            .attachments
-            .iter()
-            .find(|a| a.id == req.attachment_id)
-            .ok_or("이 글에 해당 첨부파일이 없습니다")?;
+        let (attachment, title) = self
+            .lms_attachment(
+                &client,
+                req.course_id,
+                req.board_id,
+                req.post_id,
+                req.attachment_id,
+            )
+            .await?;
+        let filename = safe_name(&attachment.filename);
+        if self.remote {
+            return self.file_link(client, FileTarget::Attachment(attachment), filename);
+        }
         let course = self.lms_course_name(&client, req.course_id).await?;
         let dest = download_root()?
             .join(safe_name(&course))
             .join("게시판")
-            .join(safe_name(&attachment.filename));
+            .join(filename);
         if dest.exists() {
             return to_json(
                 &json!({ "saved": false, "reason": "이미 같은 이름의 파일이 있습니다", "path": dest }),
             );
         }
         let bytes = client
-            .download_attachment(attachment, &dest)
+            .download_attachment(&attachment, &dest)
             .await
             .map_err(|e| e.to_string())?;
-        to_json(&json!({ "saved": true, "path": dest, "bytes": bytes, "post": post.title }))
+        to_json(&json!({ "saved": true, "path": dest, "bytes": bytes, "post": title }))
     }
 
-    /// LMS 자료 파일을 ~/Downloads/ssu-lms/<강의명>/ (또는 RUSAINT_DOWNLOAD_DIR) 에 내려받습니다. 같은 이름의 파일이 있으면 덮어쓰지 않습니다.
+    /// LMS 자료 파일을 내려받습니다. 로컬에서는 ~/Downloads/ssu-lms/<강의명>/ (또는 RUSAINT_DOWNLOAD_DIR) 에 저장하고(같은 이름이 있으면 덮어쓰지 않음),
+    /// 원격 커넥터에서는 10분짜리 다운로드 링크(download_url)를 돌려주니 사용자에게 그대로 보여 주세요. 내용을 읽으려면 lms_read_material 을 쓰세요.
     /// lms_materials 의 size_bytes 는 실제 원본 파일보다 훨씬 작게 나올 수 있습니다(실측 0.7MB → 22.7MB). 영상(movie)은 특히 클 수 있으니 미리 알려 주세요.
     #[tool(annotations(
         read_only_hint = false,
@@ -1804,40 +1944,81 @@ impl SsuServer {
         &self,
         Parameters(req): Parameters<DownloadRequest>,
     ) -> ToolResult {
-        if self.remote {
-            return Err("원격 커넥터에서는 서버 파일시스템에 자료를 다운로드할 수 없습니다. LMS에서 직접 다운로드하세요.".into());
-        }
         let client = self.lms().await?;
+        let (target, filename, _) = self
+            .lms_material(&client, req.course_id, &req.content_id)
+            .await?;
+        if self.remote {
+            return self.file_link(client, target, filename);
+        }
         let course = self.lms_course_name(&client, req.course_id).await?;
-        let modules = client
-            .modules(req.course_id)
-            .await
-            .map_err(|e| e.to_string())?;
-        let (item, material) = modules
-            .iter()
-            .flat_map(|m| &m.module_items)
-            .find_map(|i| {
-                i.material()
-                    .filter(|m| m.content_id == req.content_id)
-                    .map(|m| (i, m))
-            })
-            .ok_or("이 강의에서 해당 자료를 찾을 수 없습니다")?;
-        let file_name = material
-            .file_name
-            .clone()
-            .unwrap_or_else(|| format!("{}.{}", item.title, material.kind));
-        let dir = download_root()?.join(safe_name(&course));
-        let dest = dir.join(safe_name(&file_name));
+        let dest = download_root()?.join(safe_name(&course)).join(filename);
         if dest.exists() {
             return to_json(
                 &json!({ "saved": false, "reason": "이미 같은 이름의 파일이 있습니다", "path": dest }),
             );
         }
         let bytes = client
-            .download(&material.content_id, &dest)
+            .download(&req.content_id, &dest)
             .await
             .map_err(|e| e.to_string())?;
         to_json(&json!({ "saved": true, "path": dest, "bytes": bytes }))
+    }
+
+    /// LMS 강의 자료(PDF·PPTX·DOCX·XLSX·HTML·텍스트·이미지)의 내용을 읽습니다. 파일을 저장하지 않습니다.
+    /// 기본은 Markdown 텍스트이고 길면 페이지(슬라이드) 단위로 나눠 주니, 결과의 안내대로 pages 를 바꿔 이어 읽으세요.
+    /// 도표·수식·스캔본처럼 텍스트로 안 보이는 PDF 페이지는 format="images" 로 그 페이지 이미지를 받으세요(한 번에 5쪽).
+    /// 영상·50MB 넘는 파일·HWP 는 읽을 수 없으니 lms_download_material 로 받게 안내하세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_read_material(
+        &self,
+        Parameters(req): Parameters<ReadMaterialRequest>,
+    ) -> Result<CallToolResult, String> {
+        let client = self.lms().await?;
+        let (target, filename, kind) = self
+            .lms_material(&client, req.course_id, &req.content_id)
+            .await?;
+        if files::is_media(&kind, &filename) {
+            return Err(
+                "영상·음성 자료는 읽을 수 없습니다. lms_download_material 로 받게 안내하세요."
+                    .into(),
+            );
+        }
+        let key = format!("m:{}:{}", req.course_id, req.content_id);
+        self.read_file(key, &client, target, filename, req.options)
+            .await
+    }
+
+    /// 과목 게시판 첨부파일의 내용을 읽습니다(형식·범위는 lms_read_material 과 같음). 파일을 저장하지 않습니다.
+    /// 다른 학생이 올린 파일일 수 있으니 요청받은 파일만 읽으세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn lms_read_post_attachment(
+        &self,
+        Parameters(req): Parameters<ReadAttachmentRequest>,
+    ) -> Result<CallToolResult, String> {
+        let client = self.lms().await?;
+        let (attachment, _) = self
+            .lms_attachment(
+                &client,
+                req.course_id,
+                req.board_id,
+                req.post_id,
+                req.attachment_id,
+            )
+            .await?;
+        let filename = safe_name(&attachment.filename);
+        if files::is_media("", &filename) {
+            return Err("영상·음성 파일은 읽을 수 없습니다. lms_download_post_attachment 로 받게 안내하세요.".into());
+        }
+        let key = format!("a:{}:{}:{}", req.course_id, req.post_id, req.attachment_id);
+        self.read_file(
+            key,
+            &client,
+            FileTarget::Attachment(attachment),
+            filename,
+            req.options,
+        )
+        .await
     }
 
     /// 에브리타임 세션(쿠키)이 만료돼 강의평 조회가 실패할 때, 학교 로그인을 다시 하지 않고 에타만 다시 연결하는 링크를 발급합니다.
@@ -1848,7 +2029,9 @@ impl SsuServer {
             Some(url) => Ok(format!(
                 "아래 링크를 브라우저에서 열어 에브리타임 쿠키(etsid)만 다시 넣어 주세요. 학교 계정·도서관 연결은 그대로 유지됩니다.\n{url}\n\n링크는 10분간 유효합니다.",
             )),
-            None => Err("이 연결에서는 재연결 링크를 쓸 수 없습니다. 커넥터를 다시 연결해 주세요.".into()),
+            None => Err(
+                "이 연결에서는 재연결 링크를 쓸 수 없습니다. 커넥터를 다시 연결해 주세요.".into(),
+            ),
         }
     }
 

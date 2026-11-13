@@ -77,8 +77,14 @@ OAuth discovery, 동적 클라이언트 등록, authorization code와 S256 PKCE�
 서버를 재시작하면 모두 사라지므로 커넥터를 다시 연결해야 합니다.
 로그인 화면·인증 코드는 5분 뒤 만료되고 한 번만 사용할 수 있습니다.
 로그인은 서버 전체에서 분당 10회로 제한됩니다. 네트워크 오류 등으로 로그인에
-실패해도 자동 재시도하지 않습니다. 원격 다운로드는 서버에 개인정보 파일을
-남기지 않도록 차단됩니다. 자동 연장은 서버 실행 중에만 동작합니다.
+실패해도 자동 재시도하지 않습니다. 자동 연장은 서버 실행 중에만 동작합니다.
+
+LMS 파일은 서버 디스크에 남기지 않습니다.
+- `lms_download_*` 는 원격에서 10분짜리 다운로드 링크(`/files/<티켓>`)를 돌려주고, 링크를 열면
+  서버가 LMS 응답을 그대로 흘려보냅니다. 링크가 권한이므로 가진 사람은 10분 동안 그 파일 하나만 받을 수 있습니다.
+- `lms_read_*` 는 파일을 메모리로 받아 Claude 가 읽는 형태로 바꿉니다(50MB까지). 텍스트는 markitdown 으로
+  Markdown 으로 바꿔 페이지·슬라이드 단위로 나눠 주고, PDF 는 `format="images"` 로 페이지 PNG(poppler)를 줍니다.
+  변환 중 임시 파일은 `/tmp`(systemd `PrivateTmp`)에 잠깐 두고 바로 지웁니다.
 
 Cloudflare quick tunnel을 거쳐 Claude iPhone 앱에서 연결과 도구 호출을 확인했습니다.
 
@@ -105,3 +111,14 @@ git tag mcp-v2026.11.05 && git push origin mcp-v2026.11.05
 - 서버가 재시작되면(배포, 재부팅) 메모리의 계정이 사라지므로 커넥터를 다시 연결해야 합니다.
   quick tunnel 은 터널이 다시 뜰 때만 주소가 바뀌고, 배포로는 바뀌지 않습니다.
 - VM 에는 `cloudflared`, `jq`, `curl` 이 필요합니다.
+- LMS 자료 읽기(`lms_read_*`)에는 `markitdown` 과 `poppler-utils` 가 PATH 에 있어야 합니다.
+  서비스가 `DynamicUser`·`ProtectHome` 으로 돌기 때문에 홈이 아닌 시스템 경로에 설치합니다.
+
+  ```sh
+  sudo apt-get install -y poppler-utils
+  curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR=/usr/local/bin sh
+  sudo env UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    uv tool install 'markitdown[pdf,docx,pptx,xlsx]'
+  ```
+
+  다른 경로에 두었다면 `/etc/rusaint-mcp/env` 에 `RUSAINT_MARKITDOWN=/경로/markitdown` 을 넣습니다.
