@@ -503,18 +503,7 @@ impl LmsClient {
             .error_for_status()?
             .text()
             .await?;
-        let uri = xml_text(&xml, "content_download_uri")
-            .filter(|u| !u.is_empty())
-            .ok_or_else(|| LmsError::NoDownload(content_id.to_string()))?;
-        let url = Url::parse(COMMONS_BASE_URL)
-            .expect("static url")
-            .join(&uri.replace("&amp;", "&"))
-            .map_err(|_| LmsError::NoDownload(content_id.to_string()))?;
-        if url.host_str() != Some("commons.ssu.ac.kr") {
-            return Err(LmsError::NoDownload(format!(
-                "{content_id}: 예상하지 못한 주소"
-            )));
-        }
+        let url = material_url(&xml).ok_or_else(|| LmsError::NoDownload(content_id.to_string()))?;
         Ok(self.files.get(url).send().await?.error_for_status()?)
     }
 
@@ -672,6 +661,34 @@ pub fn html_to_text(html: &str) -> String {
     lines.join("\n").trim().to_string()
 }
 
+/// 파일 다운로드 주소가 없으면 progressive MP4 재생 주소를 사용합니다.
+fn material_url(xml: &str) -> Option<Url> {
+    let uri = xml_text(xml, "content_download_uri")
+        .filter(|u| !u.is_empty())
+        .or_else(|| {
+            let media = xml_text(xml, "main_media")?;
+            let desktop = xml_text(&media, "desktop")?;
+            let html5 = xml_text(&desktop, "html5")?;
+            if xml_text(&html5, "method")?.trim() != "progressive" {
+                return None;
+            }
+            xml_text(&html5, "media_uri")
+        })?;
+    let url = Url::parse(COMMONS_BASE_URL)
+        .ok()?
+        .join(&html_escape::decode_html_entities(&uri))
+        .ok()?;
+    (url.scheme() == "https"
+        && matches!(
+            url.host_str(),
+            Some("commons.ssu.ac.kr" | "ssuin-object.commonscdn.com")
+        )
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.port_or_known_default() == Some(443))
+    .then_some(url)
+}
+
 /// `<tag>값</tag>` 의 첫 값을 꺼냅니다 (CDATA 포함).
 fn xml_text(xml: &str, tag: &str) -> Option<String> {
     let start = xml.find(&format!("<{tag}>"))? + tag.len() + 2;
@@ -687,6 +704,36 @@ fn xml_text(xml: &str, tag: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn material_urls_support_documents_and_progressive_video() {
+        let document =
+            "<content_download_uri><![CDATA[/download?a=1&amp;b=2]]></content_download_uri>";
+        assert_eq!(
+            material_url(document).unwrap().as_str(),
+            "https://commons.ssu.ac.kr/download?a=1&b=2"
+        );
+        let video = |method: &str, uri: &str| {
+            format!(
+                "<main_media><desktop><html5><method>{method}</method><media_uri><![CDATA[{uri}]]></media_uri></html5><flash_fallback><media_uri>https://example.com/wrong</media_uri></flash_fallback></desktop></main_media>"
+            )
+        };
+        let mp4 = "https://ssuin-object.commonscdn.com/contents/ssmovie.mp4";
+        assert_eq!(
+            material_url(&video("progressive", mp4)).unwrap().as_str(),
+            mp4
+        );
+        assert!(material_url(&video("hls", mp4)).is_none());
+        for uri in [
+            "http://ssuin-object.commonscdn.com/a.mp4",
+            "https://example.com/a.mp4",
+            "https://commons.ssu.ac.kr.evil.test/a",
+            "https://commons.ssu.ac.kr:8080/a",
+        ] {
+            assert!(material_url(&video("progressive", uri)).is_none(), "{uri}");
+        }
+        assert!(material_url("<content />").is_none());
+    }
 
     #[test]
     fn xml_text_reads_plain_and_cdata() {

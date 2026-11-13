@@ -735,10 +735,14 @@ impl SsuServer {
                     .map(|m| (i, m))
             })
             .ok_or("이 강의에서 해당 자료를 찾을 수 없습니다")?;
-        let file_name = material
-            .file_name
-            .clone()
-            .unwrap_or_else(|| format!("{}.{}", item.title, material.kind));
+        let file_name = material.file_name.clone().unwrap_or_else(|| {
+            let extension = if material.kind == "movie" {
+                "mp4"
+            } else {
+                &material.kind
+            };
+            format!("{}.{extension}", item.title)
+        });
         Ok((
             FileTarget::Material(material.content_id),
             safe_name(&file_name),

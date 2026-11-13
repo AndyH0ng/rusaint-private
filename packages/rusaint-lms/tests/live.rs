@@ -7,6 +7,59 @@
 
 use rusaint_lms::LmsClient;
 
+/// LMS_VIDEO_CONTENT_ID 영상 전체를 임시 파일로 받아 검증한 뒤 삭제합니다.
+#[tokio::test]
+#[ignore]
+async fn download_video() {
+    use std::io::Read;
+
+    let content_id = std::env::var("LMS_VIDEO_CONTENT_ID").expect("LMS_VIDEO_CONTENT_ID");
+    let client = LmsClient::new(rusaint_sso::SsoCredentials::new("", "")).unwrap();
+    let response = client.open_material(&content_id).await.unwrap();
+    assert_eq!(
+        response.headers()[reqwest::header::CONTENT_TYPE],
+        "video/mp4"
+    );
+    let expected = response.content_length();
+    drop(response);
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dest = std::env::temp_dir().join(format!("rusaint-video-{unique}.mp4"));
+    let bytes = client.download(&content_id, &dest).await.unwrap();
+    let mut file = std::fs::File::open(&dest).unwrap();
+    assert_eq!(file.metadata().unwrap().len(), bytes);
+    if let Some(expected) = expected {
+        assert_eq!(bytes, expected);
+    }
+    let mut head = [0u8; 12];
+    file.read_exact(&mut head).unwrap();
+    assert_eq!(&head[4..8], b"ftyp");
+    assert!(!std::path::PathBuf::from(format!("{}.part", dest.display())).exists());
+    println!("영상 전체 다운로드 검증 완료: {bytes} bytes, MP4, .part 파일 없음");
+    drop(file);
+    std::fs::remove_file(dest).unwrap();
+}
+
+/// LMS_VIDEO_CONTENT_ID 영상의 앞부분만 받아 대용량 전체 다운로드 없이 검증합니다.
+#[tokio::test]
+#[ignore]
+async fn open_video() {
+    let content_id = std::env::var("LMS_VIDEO_CONTENT_ID").expect("LMS_VIDEO_CONTENT_ID");
+    let client = LmsClient::new(rusaint_sso::SsoCredentials::new("", "")).unwrap();
+    let mut response = client.open_material(&content_id).await.unwrap();
+    assert_eq!(
+        response.headers()[reqwest::header::CONTENT_TYPE],
+        "video/mp4"
+    );
+    let mut head = Vec::new();
+    while head.len() < 12 {
+        head.extend_from_slice(&response.chunk().await.unwrap().expect("video bytes"));
+    }
+    assert_eq!(&head[4..8], b"ftyp");
+}
+
 #[tokio::test]
 #[ignore]
 async fn login_and_read() {
