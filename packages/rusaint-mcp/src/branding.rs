@@ -4,6 +4,8 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use rmcp::model::Icon;
 
 pub const ICON: &[u8] = include_bytes!("../assets/icon.png");
+pub const FAVICON_PNG: &[u8] = include_bytes!("../assets/favicon.png");
+pub const FAVICON_ICO: &[u8] = include_bytes!("../assets/favicon.ico");
 
 static ICON_URI: LazyLock<String> =
     LazyLock::new(|| format!("data:image/png;base64,{}", STANDARD.encode(ICON)));

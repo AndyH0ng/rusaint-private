@@ -86,7 +86,7 @@ pub static CSP: LazyLock<String> = LazyLock::new(|| {
 
 fn document(title: &str, body: &str) -> String {
     format!(
-        r#"<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" type="image/png" sizes="464x464" href="/favicon.png"><title>{title}</title><style>{STYLE}</style></head><body>{body}</body></html>"#
+        r#"<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="64x64" href="/favicon.png"><title>{title}</title><style>{STYLE}</style></head><body>{body}</body></html>"#
     )
 }
 
