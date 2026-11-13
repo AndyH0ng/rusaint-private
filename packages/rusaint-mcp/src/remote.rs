@@ -210,6 +210,8 @@ fn allowed_ids(raw: &str) -> Vec<String> {
 
 fn router(app: App) -> Router {
     Router::new()
+        .route("/favicon.png", get(favicon))
+        .route("/favicon.ico", get(favicon))
         .route("/.well-known/oauth-protected-resource", get(resource))
         .route("/.well-known/oauth-protected-resource/mcp", get(resource))
         .route("/.well-known/oauth-authorization-server", get(metadata))
@@ -251,6 +253,10 @@ fn router(app: App) -> Router {
             },
         ))
         .with_state(app)
+}
+
+async fn favicon() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "image/png")], crate::branding::ICON)
 }
 
 async fn resource(State(app): State<App>) -> Json<Value> {
