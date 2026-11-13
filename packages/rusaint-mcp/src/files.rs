@@ -11,7 +11,6 @@ use std::time::{Duration, Instant};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use rmcp::model::{CallToolResult, ContentBlock as Content, ResourceContents};
-use rmcp::schemars;
 use rusaint_lms::{Attachment, LmsClient};
 
 /// 다운로드 링크가 유효한 시간
@@ -28,7 +27,8 @@ const MAX_IMAGE_PAGES: u32 = 5;
 const MAX_RAW_PDF_BYTES: usize = 10 * 1024 * 1024;
 /// 페이지 구분이 없는 문서(DOCX·텍스트)를 나눠 읽는 한 부분 길이
 const PART_CHARS: usize = MAX_TEXT_CHARS;
-const TOOL_TIMEOUT: Duration = Duration::from_secs(90);
+/// 20MB 넘는 슬라이드 PDF 도 변환되도록 넉넉히 둡니다.
+const TOOL_TIMEOUT: Duration = Duration::from_secs(180);
 
 /// 내려받을 대상
 pub enum FileTarget {
@@ -253,8 +253,7 @@ impl Range {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, schemars::JsonSchema)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ReadFormat {
     /// 텍스트·Markdown (기본값)
     #[default]
@@ -263,6 +262,19 @@ pub enum ReadFormat {
     Images,
     /// PDF 원본을 그대로 (실험용, 10MB 이하)
     Pdf,
+}
+
+impl ReadFormat {
+    pub fn parse(raw: Option<&str>) -> Result<Self, String> {
+        match raw.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
+            None | Some("") | Some("text") | Some("markdown") => Ok(Self::Text),
+            Some("images") | Some("image") | Some("png") => Ok(Self::Images),
+            Some("pdf") => Ok(Self::Pdf),
+            Some(other) => Err(format!(
+                "format 은 text·images·pdf 중 하나여야 합니다: {other}"
+            )),
+        }
+    }
 }
 
 /// 받은 파일. 변환 결과(페이지별 텍스트)는 처음 필요할 때 만들어 같이 들고 있습니다.

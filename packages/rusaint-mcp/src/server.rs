@@ -39,6 +39,7 @@ const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
 - 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
 - 로그인은 login 도구로 안내합니다. 비밀번호를 대화나 도구 인자로 받지 마세요. 계정이 거부되면 반복 시도하지 말고 로컬에서는 `rusaint-mcp login` 후 앱을 재시작하고, 원격에서는 커넥터를 다시 연결하도록 안내하세요.
+- LMS 자료 내용을 읽거나 요약할 때는 lms_read_material / lms_read_post_attachment 를 씁니다. lms_download_* 의 download_url 은 사용자용 링크라 Claude 의 코드 실행 환경에서는 받을 수 없습니다.
 - 성적·과제·학적 같은 개인 정보는 사용자가 요청한 범위에서만 보여 주고 다른 곳에 옮기지 마세요.";
 
 type ToolResult = Result<String, String>;
@@ -381,12 +382,9 @@ pub struct AttachmentRequest {
 }
 
 /// 읽기 범위와 형식
-#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 pub struct ReadOptions {
-    /// 읽을 페이지(슬라이드) 범위. 예: "3", "3-7", "10-". 생략하면 처음부터 읽습니다.
     pub pages: Option<String>,
-    /// text(기본, Markdown 텍스트) · images(PDF 페이지 PNG, 한 번에 5쪽) · pdf(PDF 원본, 실험용)
-    pub format: Option<ReadFormat>,
+    pub format: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -394,8 +392,10 @@ pub struct ReadMaterialRequest {
     pub course_id: u64,
     /// lms_materials 의 material.content_id
     pub content_id: String,
-    #[serde(flatten)]
-    pub options: ReadOptions,
+    /// 읽을 페이지(슬라이드) 범위. 예: "3", "3-7", "10-". 생략하면 처음부터 읽습니다.
+    pub pages: Option<String>,
+    /// "text"(기본, Markdown 텍스트) · "images"(PDF 페이지 PNG, 한 번에 5쪽) · "pdf"(PDF 원본, 실험용)
+    pub format: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -405,8 +405,10 @@ pub struct ReadAttachmentRequest {
     pub post_id: u64,
     /// lms_post 의 attachments[].id
     pub attachment_id: u64,
-    #[serde(flatten)]
-    pub options: ReadOptions,
+    /// 읽을 페이지(슬라이드) 범위. 예: "3", "3-7", "10-". 생략하면 처음부터 읽습니다.
+    pub pages: Option<String>,
+    /// "text"(기본, Markdown 텍스트) · "images"(PDF 페이지 PNG, 한 번에 5쪽) · "pdf"(PDF 원본, 실험용)
+    pub format: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -780,7 +782,7 @@ impl SsuServer {
             "download_url": url,
             "filename": filename,
             "expires_in_minutes": files::LINK_TTL.as_secs() / 60,
-            "note": "이 링크를 사용자에게 그대로 보여 주세요. 10분 동안 유효하고 링크를 가진 사람은 누구나 받을 수 있으니 다른 곳에 옮기지 마세요. 내용을 읽어야 하면 lms_read_* 도구를 쓰세요.",
+            "note": "사용자가 브라우저로 여는 링크입니다. 사용자에게 그대로 보여 주세요. Claude 의 코드 실행 환경(curl·fetch)에서는 이 주소가 막혀 있으니 받으려 하지 마세요. 내용을 읽으려면 lms_read_material / lms_read_post_attachment 를 쓰세요. 10분 동안 유효하고 링크를 가진 사람은 누구나 받을 수 있으니 다른 곳에 옮기지 마세요.",
         }))
     }
 
@@ -794,7 +796,7 @@ impl SsuServer {
         options: ReadOptions,
     ) -> Result<CallToolResult, String> {
         let range = Range::parse(options.pages.as_deref())?;
-        let format = options.format.unwrap_or_default();
+        let format = ReadFormat::parse(options.format.as_deref())?;
         let cached = self.docs.lock().await.get(&key);
         let doc = match cached {
             Some(doc) => doc,
@@ -1985,7 +1987,11 @@ impl SsuServer {
             );
         }
         let key = format!("m:{}:{}", req.course_id, req.content_id);
-        self.read_file(key, &client, target, filename, req.options)
+        let options = ReadOptions {
+            pages: req.pages,
+            format: req.format,
+        };
+        self.read_file(key, &client, target, filename, options)
             .await
     }
 
@@ -2016,7 +2022,10 @@ impl SsuServer {
             &client,
             FileTarget::Attachment(attachment),
             filename,
-            req.options,
+            ReadOptions {
+                pages: req.pages,
+                format: req.format,
+            },
         )
         .await
     }
