@@ -5,18 +5,34 @@ Wants=network-online.target
 # 터널이 다시 뜨면 주소가 바뀌므로 서버도 같이 다시 시작합니다.
 Requires=rusaint-mcp-tunnel.service
 PartOf=rusaint-mcp-tunnel.service
+# 재시작을 모두 소진해 멈추면 알립니다.
+OnFailure=rusaint-mcp-alert.service
+# 크래시 루프에서 systemd 가 5회 만에 포기하지 않도록 넓게 둡니다(기본 10초/5회).
+StartLimitIntervalSec=300
+StartLimitBurst=20
 
 [Service]
 DynamicUser=yes
+# 포트는 ports.env 가 단일 출처입니다. /etc/rusaint-mcp/env 가 뒤에 읽히므로 거기서 덮어쓸 수 있습니다.
+EnvironmentFile=/usr/local/lib/rusaint-mcp/ports.env
 # RUSAINT_ALLOWED_IDS, (고정 도메인이면) RUSAINT_MCP_PUBLIC_URL
 EnvironmentFile=/etc/rusaint-mcp/env
-Environment=RUSAINT_MCP_BIND=127.0.0.1:3000
 # "오늘"·현재 학기·자동 연장 시각을 한국 시간으로 계산합니다(VM 은 UTC).
 Environment=TZ=Asia/Seoul
+# 증명서 발급 기록(출력 완료 여부와 만들어 둔 PDF)은 재시작 뒤에도 남아야 합니다.
+StateDirectory=rusaint-mcp
+# ProtectHome 때문에 uv 가 홈을 쓸 수 없어 캐시를 따로 줍니다.
+CacheDirectory=rusaint-mcp
+Environment=UV_CACHE_DIR=%C/rusaint-mcp/uv
 ExecStart=/usr/local/lib/rusaint-mcp/start.sh
 Restart=always
 RestartSec=5
+# 증명서 렌더링이 Python 을 띄우므로 메모리가 1GB 인 VM 에서 서버까지 함께 죽지 않게 상한을 둡니다.
+MemoryMax=600M
+TasksMax=256
 NoNewPrivileges=yes
+# MemoryDenyWriteExecute 는 켜지 않습니다. 증명서 복호화가 Unicorn 에뮬레이터를 쓰는데
+# 실행 가능 매핑이 필요해 켜면 PDF 생성이 실패합니다.
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes

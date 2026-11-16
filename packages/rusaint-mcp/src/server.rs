@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use chrono::{Local, NaiveDate, NaiveTime, Timelike};
+use chrono::{Datelike, Local, NaiveDate, NaiveTime, Timelike};
 use rmcp::handler::server::{router::tool::ToolRouter, wrapper::Parameters};
 use rmcp::model::{CallToolResult, Implementation, ServerCapabilities, ServerConfig};
-use rmcp::{ServerHandler, schemars, tool, tool_handler, tool_router};
+use rmcp::service::RequestContext;
+use rmcp::{RoleServer, ServerHandler, schemars, tool, tool_handler, tool_router};
 use rusaint::application::chapel::ChapelApplication;
 use rusaint::application::course_grades::CourseGradesApplication;
 use rusaint::application::course_grades::model::CourseType;
@@ -16,11 +17,12 @@ use rusaint::application::scholarships::ScholarshipsApplication;
 use rusaint::application::student_information::StudentInformationApplication;
 use rusaint::model::SemesterType;
 use rusaint_calendar::CalendarClient;
+use rusaint_certi::CertiClient;
 use rusaint_everytime::EverytimeClient;
 use rusaint_library::{LibraryClient, RoomReservation};
 use rusaint_lms::{LmsClient, Term};
 use rusaint_meal::{Cafeteria, MealClient};
-use rusaint_path::{Eligibility, PathClient, ProgramQuery};
+use rusaint_path::{Eligibility, PathClient, ProgramQuery, RecruitStatus};
 use rusaint_regulation::RegulationClient;
 use rusaint_sso::SsoCredentials;
 use serde::{Deserialize, Serialize};
@@ -28,19 +30,23 @@ use serde_json::json;
 use tokio::sync::OnceCell;
 
 use crate::automation::{Automation, MAX_RENEW_HOURS};
+use crate::certificate;
 use crate::chapel;
 use crate::courses::{self, Kind};
 use crate::files::{self, Doc, DocCache, FileLinks, FileTarget, Range, ReadFormat};
 use crate::keychain;
+use crate::notify::Progress;
 use crate::pending::{Action, Pending};
 use crate::usaint::{self, Usaint};
 
-const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사정·채플·장학금·학적), 학식 메뉴, LMS(강의·과제·자료·공지·게시판), SSU-PATH(비교과 프로그램), 중앙도서관(열람실 좌석, 스터디룸, 대출)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
+const INSTRUCTIONS: &str = "숭실대학교 u-saint(성적·시간표·졸업사정·채플·장학금·학적), 학식 메뉴, LMS(강의·과제·자료·공지·게시판), SSU-PATH(비교과 프로그램), 중앙도서관(열람실 좌석, 스터디룸, 대출), 증명서 발급(KICA증명)을 다루는 비공식 도구입니다. 학교 사이트가 바뀌면 틀리거나 실패할 수 있으니, 중요한 결정 전에는 공식 홈페이지 확인을 권하세요.
 - 날짜는 YYYY-MM-DD, 시각은 HH:MM(한국 시간)입니다. 생략하면 오늘입니다.
-- 도서관 쓰기 작업은 prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 사용자의 명시적 동의를 받은 뒤에만 confirm_library_action 을 호출합니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
+- 되돌릴 수 없는 작업은 두 단계입니다. prepare_* 의 summary 를 사용자에게 그대로 보여 주고, 그 작업에 대한 명시적 동의를 받은 뒤에만 짝이 되는 confirm 도구를 호출합니다. 도서관은 confirm_library_action, 증명서 출력은 confirm_certificate_action 입니다. 동의는 작업 하나에만 유효하며, 내용이 바뀌면 다시 prepare 합니다.
+- 증명서는 돈과 출력 매수가 걸립니다. 결제 금액은 학교가 정한 값을 그대로 사용자에게 보여 주고, 결제 인증은 사용자가 브라우저에서 직접 합니다. 출력은 남은 매수를 소비하며 되돌릴 수 없습니다.
+- 증명서 작업이 실패하거나 상태가 확인되지 않으면(issuance_pending, approval_unknown 등) 절대 다시 신청·결제·출력하지 마세요. certificate_order_status 로 조회하거나 같은 문서로 다시 확인합니다. 발급 등록은 익일 오전까지 늦어질 수 있습니다.
 - 로그인은 login 도구로 안내합니다. 비밀번호를 대화나 도구 인자로 받지 마세요. 계정이 거부되면 반복 시도하지 말고 로컬에서는 `rusaint-mcp login` 후 앱을 재시작하고, 원격에서는 커넥터를 다시 연결하도록 안내하세요.
-- LMS 자료 내용을 읽거나 요약할 때는 lms_read_material / lms_read_post_attachment 를 씁니다. lms_download_* 의 download_url 은 사용자용 링크라 Claude 의 코드 실행 환경에서는 받을 수 없습니다.
-- 성적·과제·학적 같은 개인 정보는 사용자가 요청한 범위에서만 보여 주고 다른 곳에 옮기지 마세요.";
+- LMS 자료 내용을 읽거나 요약할 때는 lms_read_material / lms_read_post_attachment 를 씁니다. lms_download_* 의 download_url, 증명서·이수증 링크는 사용자가 브라우저로 여는 10분짜리 주소라 Claude 의 코드 실행 환경에서는 받을 수 없습니다. 사용자에게 그대로 보여 주고 다른 곳에 옮기지 마세요.
+- 성적·과제·학적·증명서 같은 개인 정보는 사용자가 요청한 범위에서만 보여 주고 다른 곳에 옮기지 마세요.";
 
 type ToolResult = Result<String, String>;
 
@@ -347,15 +353,59 @@ pub struct GraduationPlanRequest {
     pub semester: Option<String>,
 }
 
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PathProgramStatus {
+    /// 모집중 (기본값)
+    #[default]
+    Recruiting,
+    /// 모집대기
+    Upcoming,
+    /// 종료 (마감된 프로그램도 신청자·대기자 수가 나옵니다)
+    Closed,
+    /// 전체
+    All,
+}
+
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct PathProgramsRequest {
     /// 프로그램명·키워드 검색어
     pub keyword: Option<String>,
+    /// 접수상태. 생략하면 recruiting(모집중)
+    #[serde(default)]
+    pub status: PathProgramStatus,
     /// 페이지 (1부터, 한 페이지 10개). 생략하면 1
     pub page: Option<u32>,
     /// true 면 신청 대상이 아닌 것으로 보이는 프로그램(다른 학과 전용 등)도 포함
     #[serde(default)]
     pub include_ineligible: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CertiDocumentRequest {
+    /// certificate_documents 의 document_id
+    pub document_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CertificateOrderRequest {
+    /// enrollment(재학) 또는 scholarship(장학금). 일반출력 국문 1통만 지원
+    pub kind: String,
+    /// 장학금 조회 시작 학기 (예: 20241)
+    pub start: Option<String>,
+    /// 장학금 조회 종료 학기
+    pub end: Option<String>,
+    /// 실제 제출기관
+    pub receiver: String,
+    /// 제출 용도
+    pub purpose: String,
+    /// 허용할 결제 상한(원). 생략하면 1000, 최대 10000
+    pub max_amount: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CertificateOrderStatusRequest {
+    pub order_id: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -477,6 +527,8 @@ pub struct SsuServer {
     lms: Arc<OnceCell<Arc<LmsClient>>>,
     usaint: Arc<OnceCell<Arc<Usaint>>>,
     path: Arc<OnceCell<Arc<PathClient>>>,
+    /// 증명서 발급(KICA증명). 학교가 이 서버를 보는 공개 IP 가 설정되어야 열립니다.
+    certi: Arc<OnceCell<Arc<CertiClient>>>,
     /// u-saint·LMS·SSU-PATH 가 함께 쓰는 통합 계정. 거부되면 세 서비스 모두 다시 시도하지 않습니다.
     sso: Arc<OnceCell<Arc<SsoCredentials>>>,
     pending: Arc<Pending>,
@@ -487,6 +539,7 @@ pub struct SsuServer {
     relink: Option<Relink>,
     /// 원격 연결에서 LMS 파일 다운로드 링크를 발급하는 핸들. 로컬 연결은 `None`.
     files: Option<FileLinks>,
+    payments: Option<crate::payments::Payments>,
     /// 마지막으로 읽은 LMS 파일 (이어 읽기용)
     docs: Arc<tokio::sync::Mutex<DocCache>>,
     /// 이 연결의 모든 복사본이 사라지면 keep-alive 도 멈추도록 약한 참조로만 봅니다.
@@ -494,11 +547,13 @@ pub struct SsuServer {
 }
 
 /// SSO(토큰) 연결의 학교 세션을 확인하는 간격
-const KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10 * 60);
+/// 세션 확인 간격. 미국 리전에서 학교까지 TCP·TLS 를 다시 맺으면 왕복 3번이 더 들기 때문에,
+/// 연결 재사용 시간(5분)보다 짧게 두어 따뜻한 연결을 유지합니다.
+const KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(4 * 60);
 
 impl SsuServer {
     pub fn new() -> Result<Self, String> {
-        Ok(Self {
+        let mut server = Self {
             meal: Arc::new(MealClient::new().map_err(|e| e.to_string())?),
             calendar: Arc::new(CalendarClient::new().map_err(|e| e.to_string())?),
             regulation: Arc::new(RegulationClient::new().map_err(|e| e.to_string())?),
@@ -507,6 +562,7 @@ impl SsuServer {
             lms: Arc::new(OnceCell::new()),
             usaint: Arc::new(OnceCell::new()),
             path: Arc::new(OnceCell::new()),
+            certi: Arc::new(OnceCell::new()),
             sso: Arc::new(OnceCell::new()),
             pending: Arc::new(Pending::new()),
             automation: Arc::new(Automation::default()),
@@ -514,9 +570,36 @@ impl SsuServer {
             remote: false,
             relink: None,
             files: None,
+            payments: None,
             docs: Arc::default(),
             alive: Arc::new(()),
-        })
+        };
+        server.prune_tools();
+        Ok(server)
+    }
+
+    /// 이 서버에서 동작하지 않는 도구는 목록에서 뺍니다. 호출해 보고 실패하는 왕복을 없애고,
+    /// 쓸 수 없는 도구 설명이 매 세션 컨텍스트를 차지하지 않게 합니다.
+    fn prune_tools(&mut self) {
+        // 증명서는 학교가 보는 공개 IP 와 PDF 자산이 있는 서버에서만 됩니다.
+        if certi_address().is_err() {
+            for name in [
+                "certificate_documents",
+                "prepare_certificate_pdf",
+                "confirm_certificate_action",
+                "prepare_certificate_order",
+                "certificate_order_status",
+            ] {
+                self.tool_router.remove_route(name);
+            }
+            return;
+        }
+        // 결제는 사용자 브라우저가 열 공개 주소가 필요하므로 원격 연결에서만 됩니다.
+        if !self.remote {
+            for name in ["prepare_certificate_order", "certificate_order_status"] {
+                self.tool_router.remove_route(name);
+            }
+        }
     }
 
     /// 원격 연결은 검증된 계정만 사용하며 호스트의 Keychain 을 읽지 않습니다.
@@ -527,6 +610,9 @@ impl SsuServer {
     ) -> Result<Self, String> {
         let mut server = Self::new()?;
         server.remote = true;
+        // 원격에서만 되는 도구가 있어 목록을 다시 만듭니다.
+        server.tool_router = Self::tool_router();
+        server.prune_tools();
         let _ = server.sso.set(sso);
         if let Some(library) = library {
             let _ = server.library.set(library);
@@ -545,6 +631,10 @@ impl SsuServer {
     /// 원격 연결에 LMS 파일 다운로드 링크 발급 핸들을 붙입니다.
     pub fn set_files(&mut self, files: FileLinks) {
         self.files = Some(files);
+    }
+
+    pub fn set_payments(&mut self, payments: crate::payments::Payments) {
+        self.payments = Some(payments);
     }
 
     /// 에타 세션(쿠키)이 만료됐을 때 쓰는 재연결 URL 을 발급합니다. 원격 연결에서만 동작합니다.
@@ -718,6 +808,16 @@ impl SsuServer {
             .cloned()
     }
 
+    async fn certi(&self) -> Result<Arc<CertiClient>, String> {
+        let sso = self.sso().await?;
+        self.certi
+            .get_or_try_init(|| async {
+                Ok::<_, String>(Arc::new(CertiClient::new(sso, certi_address()?)))
+            })
+            .await
+            .cloned()
+    }
+
     /// 강의 자료를 찾아 (대상, 파일 이름, 자료 종류) 를 돌려줍니다.
     async fn lms_material(
         &self,
@@ -846,13 +946,13 @@ impl SsuServer {
         Ok((term, terms))
     }
 
-    async fn prepared(&self, action: Action, summary: String) -> ToolResult {
+    async fn prepared(&self, action: Action, summary: String, confirm: &str) -> ToolResult {
         let action_id = self.pending.insert(action, summary.clone()).await;
         to_json(&json!({
             "action_id": action_id,
             "summary": summary,
             "expires_in_minutes": 5,
-            "next": "사용자에게 summary 를 보여 주고 동의를 받은 뒤 confirm_library_action 을 호출하세요",
+            "next": format!("사용자에게 summary 를 보여 주고 동의를 받은 뒤 {confirm} 을 호출하세요"),
         }))
     }
 }
@@ -1662,7 +1762,9 @@ impl SsuServer {
         to_json(&json!({ "general": general, "academic_records": records }))
     }
 
-    /// SSU-PATH 에서 지금 모집 중이고 내 학년이 신청할 수 있는 비교과 프로그램 목록. 안내할 때 각 항목의 url(상세 페이지)도 함께 알려 주세요.
+    /// SSU-PATH 에서 내 학년이 신청할 수 있는 비교과 프로그램 목록. 기본은 지금 모집 중인 것만이며,
+    /// status 로 모집대기·종료·전체를 고를 수 있습니다(종료된 프로그램의 신청자 수도 applicants 로 나옵니다).
+    /// 신청자 수는 상세(path_program_detail)에는 없고 이 목록에만 있습니다. 안내할 때 각 항목의 url(상세 페이지)도 함께 알려 주세요.
     /// eligibility 는 신청 대상(학교 전체/내 학과)과 신청 신분(학생)으로 판단하며, unknown 은 단과대 단위 대상 등이라
     /// path_program_detail 로 확인해야 합니다. seats_left 가 0 이하여도 대기자 신청이 가능할 수 있습니다.
     #[tool(annotations(read_only_hint = true, open_world_hint = true))]
@@ -1670,7 +1772,12 @@ impl SsuServer {
         let client = self.path().await?;
         let me = client.profile().await.map_err(|e| e.to_string())?;
         let query = ProgramQuery {
-            recruiting_only: true,
+            status: match req.status {
+                PathProgramStatus::Recruiting => Some(RecruitStatus::Recruiting),
+                PathProgramStatus::Upcoming => Some(RecruitStatus::Upcoming),
+                PathProgramStatus::Closed => Some(RecruitStatus::Closed),
+                PathProgramStatus::All => None,
+            },
             grade: me.grade,
             keyword: req.keyword,
             page: req.page.unwrap_or(1),
@@ -1692,6 +1799,214 @@ impl SsuServer {
             "page": page.page,
             "last_page": page.last_page,
             "items": items,
+        }))
+    }
+
+    /// KICA증명(certi.ssu.ac.kr) 증명서보관함: 이미 발급한 일반 출력 증명서와 남은 출력 매수입니다.
+    /// 조회만 합니다. 신청·결제·출력은 하지 않으며, 목록이 비어 있으면 발급해 둔 증명서가 없다는 뜻입니다.
+    /// 남은 매수(remaining)가 0이면 다시 출력할 수 없고 새로 발급해야 합니다.
+    /// u-saint 증명서(PDF 다운로드) 보관함은 아직 다루지 않습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn certificate_documents(&self) -> ToolResult {
+        let client = self.certi().await?;
+        let documents = client.documents().await.map_err(|e| e.to_string())?;
+        to_json(&json!({
+            "documents": documents
+                .iter()
+                .map(|d| json!({
+                    "document_id": d.document_id,
+                    "name": d.name,
+                    "language": if d.korean { "국문" } else { "영문" },
+                    "copies": d.copies,
+                    "printed": d.printed,
+                    "remaining": d.remaining(),
+                }))
+                .collect::<Vec<_>>(),
+        }))
+    }
+
+    /// 일반출력(INTERNET) 국문 증명서 1통을 신청하고 결제 링크를 준비합니다. FILE 전자서명 PDF 상품은 지원하지 않습니다.
+    /// 반환된 summary와 실제 amount를 사용자에게 보여 주고 브라우저에서 직접 결제 인증하게 하세요.
+    /// 무료 건은 바로 신청합니다. issuance_pending/approval_unknown이면 재신청·재결제하지 말고 certificate_order_status로 확인하세요.
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        open_world_hint = true
+    ))]
+    async fn prepare_certificate_order(
+        &self,
+        Parameters(req): Parameters<CertificateOrderRequest>,
+        context: RequestContext<RoleServer>,
+    ) -> ToolResult {
+        // 학적 선택부터 결제 폼까지 학교 화면을 여러 번 거칩니다.
+        let mut progress = Progress::new(&context, 2);
+        progress.step("증명서 신청을 접수합니다").await;
+        let payments = self
+            .payments
+            .as_ref()
+            .ok_or("결제 연결은 원격 MCP에서만 지원합니다")?;
+        let kind = match req.kind.as_str() {
+            "enrollment" => rusaint_certi::payment::Kind::Enrollment,
+            "scholarship" => rusaint_certi::payment::Kind::Scholarship,
+            _ => return Err("enrollment 또는 scholarship을 지정하세요".into()),
+        };
+        let request = rusaint_certi::payment::OrderRequest {
+            kind,
+            start: req.start,
+            end: req.end,
+            receiver: req.receiver,
+            purpose: req.purpose,
+        };
+        let result = payments
+            .prepare(
+                self.sso().await?.student_id(),
+                self.certi().await?,
+                request,
+                req.max_amount.unwrap_or(1000),
+            )
+            .await?;
+        progress.step("결제 링크를 준비했습니다").await;
+        to_json(&result)
+    }
+
+    /// 기존 주문의 발급 등록·PDF 상태를 조회하고 복구합니다. 결제 승인과 발급 신청은 다시 보내지 않습니다.
+    /// 발급 등록은 익일 오전까지 지연될 수 있습니다. 미확인 상태에서 새 주문을 만들거나 재결제하지 마세요.
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        idempotent_hint = true,
+        open_world_hint = true
+    ))]
+    async fn certificate_order_status(
+        &self,
+        Parameters(req): Parameters<CertificateOrderStatusRequest>,
+    ) -> ToolResult {
+        let payments = self.payments.as_ref().ok_or("원격 MCP에서만 지원합니다")?;
+        to_json(
+            &payments
+                .status(
+                    self.sso().await?.student_id(),
+                    &req.order_id,
+                    self.certi().await?,
+                )
+                .await?,
+        )
+    }
+
+    /// 보관함의 증명서를 PDF 로 출력할 준비를 합니다. 아직 출력하지 않습니다.
+    /// 학교에 출력 완료를 알리는 단계가 들어 있어 실행하면 남은 출력 매수를 하나 소비하고 되돌릴 수 없습니다.
+    /// summary 를 사용자에게 그대로 보여 주고 동의를 받은 뒤 confirm_certificate_action 을 호출하세요.
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        open_world_hint = true
+    ))]
+    async fn prepare_certificate_pdf(
+        &self,
+        Parameters(req): Parameters<CertiDocumentRequest>,
+    ) -> ToolResult {
+        let client = self.certi().await?;
+        // 자산이 없으면 출력 매수를 쓰기 전에 여기서 멈춥니다.
+        certificate::PythonReport::new().await?;
+        // 이미 출력한 문서는 다시 출력하지 않고 보관한 PDF 를 전달합니다.
+        if let Some(record) =
+            certificate::Journal::open(self.sso().await?.student_id())?.record(&req.document_id)?
+        {
+            return self
+                .prepared(
+                    Action::IssueCertificatePdf {
+                        document_id: record.document_number,
+                    },
+                    format!(
+                        "'{}' 은 이미 출력한 문서입니다. 다시 출력하지 않고 서버에 보관한 PDF 를 전달합니다(문서확인번호 {}).",
+                        record.name, record.document_code
+                    ),
+                    "confirm_certificate_action",
+                )
+                .await;
+        }
+        let document = client
+            .documents()
+            .await
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|d| d.document_id == req.document_id)
+            .ok_or(
+                "증명서보관함에 그 문서가 없습니다. certificate_documents 의 document_id 를 넘겨 주세요.",
+            )?;
+        if !document.available() {
+            return Err("남은 출력 매수가 없습니다. 증명서를 새로 발급해야 합니다.".into());
+        }
+        let summary = format!(
+            "증명서보관함의 '{}'({}) 1통을 PDF 로 출력합니다. \
+             남은 출력 매수 {}통 중 1통을 쓰며 되돌릴 수 없습니다. \
+             학교가 원본확인을 해 주지 않으면 PDF 를 드리지 않습니다.",
+            document.name,
+            if document.korean { "국문" } else { "영문" },
+            document.remaining(),
+        );
+        self.prepared(
+            Action::IssueCertificatePdf {
+                document_id: document.document_id,
+            },
+            summary,
+            "confirm_certificate_action",
+        )
+        .await
+    }
+
+    /// prepare_certificate_pdf 로 준비하고 사용자가 동의한 증명서 출력을 실행합니다.
+    /// 원격 커넥터에서는 10분짜리 PDF 링크(download_url)를, 로컬에서는 ~/Downloads/ssu-lms/증명서/ 에 저장한 경로를 돌려줍니다.
+    /// 이 PDF 는 학교의 인쇄 데이터를 그대로 렌더링한 것이며 공급업체의 전자서명 PDF 와는 다릅니다.
+    #[tool(annotations(
+        destructive_hint = true,
+        idempotent_hint = false,
+        open_world_hint = true
+    ))]
+    async fn confirm_certificate_action(
+        &self,
+        Parameters(req): Parameters<ConfirmRequest>,
+        context: RequestContext<RoleServer>,
+    ) -> ToolResult {
+        let (action, summary) = self.pending.take(&req.action_id).await?;
+        let Action::IssueCertificatePdf { document_id } = action else {
+            return Err("도서관 작업은 confirm_library_action 으로 실행하세요".into());
+        };
+        // 학교 요청이 여러 번 이어져 몇 초 걸립니다. 멈춘 것처럼 보이지 않게 단계를 알립니다.
+        let mut progress = Progress::new(&context, 3);
+        progress.step("증명서 세션을 확인합니다").await;
+        let client = self.certi().await?;
+        progress.step("학교에서 문서를 받아 PDF 를 만듭니다").await;
+        let (record, pdf) =
+            certificate::issue_saved(&client, self.sso().await?.student_id(), &document_id)
+                .await
+                .map_err(|e| format!("{summary}: 실패 - {e}"))?;
+        progress.step("PDF 를 전달합니다").await;
+        let filename = safe_name(&format!("{}_{}.pdf", record.name, record.document_code));
+        if self.remote {
+            let links = self.files.as_ref().ok_or(
+                "이 연결에서는 다운로드 링크를 만들 수 없습니다. 커넥터를 다시 연결해 주세요.",
+            )?;
+            let url = links.mint_inline(pdf, "application/pdf", filename.clone());
+            return to_json(&json!({
+                "download_url": url,
+                "filename": filename,
+                "certificate": record.name,
+                "document_code": record.document_code,
+                "expires_in_minutes": files::LINK_TTL.as_secs() / 60,
+                "note": "사용자가 브라우저로 받는 링크입니다. 10분 동안 유효하고 링크를 가진 사람은 누구나 열 수 있으니 다른 곳에 옮기지 마세요. 문서확인번호로 학교 원본확인을 통과한 PDF 입니다.",
+            }));
+        }
+        let dest = download_root()?.join("증명서").join(&filename);
+        if let Some(dir) = dest.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&dest, &pdf).map_err(|e| e.to_string())?;
+        to_json(&json!({
+            "saved": true,
+            "path": dest,
+            "certificate": record.name,
+            "document_code": record.document_code,
         }))
     }
 
@@ -1728,6 +2043,110 @@ impl SsuServer {
                 .map(|(k, v)| json!({ "item": k, "value": v }))
                 .collect::<Vec<_>>(),
         }))
+    }
+
+    /// SSU-PATH 나의 신청내역: 신청한 비교과 프로그램의 상태(신청·이수·미이수 등), 출석, 과제, 설문, 이수증 발급 가능 여부(certificate), 신청일.
+    /// cancelable 은 모집기간 안이라 취소할 수 있다는 뜻이며, 취소하면 다시 신청할 수 없습니다.
+    /// 이수증은 certificate 가 있는 항목에 대해 path_certificate 로 받습니다.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn path_my_applications(&self) -> ToolResult {
+        let client = self.path().await?;
+        let apps = client.applications().await.map_err(|e| e.to_string())?;
+        let items: Vec<_> = apps
+            .iter()
+            .map(|a| {
+                json!({
+                    "program_id": a.program_id,
+                    "url": a.url,
+                    "title": a.title,
+                    "status": a.status,
+                    "cancelable": a.cancelable,
+                    "attendance": a.attendance,
+                    "assignment": a.assignment,
+                    "survey": a.survey,
+                    "certificate": a.certificate.as_ref().map(|c| if c.issued { "issued" } else { "available" }),
+                    "applied_on": a.applied_on,
+                })
+            })
+            .collect();
+        to_json(&json!({ "count": items.len(), "items": items }))
+    }
+
+    /// SSU-PATH 프로그램의 신청서 양식: 신청할 때 내야 하는 항목(text 는 글로 답하는 질문, file 은 첨부 파일)과 사전설문 필요 여부.
+    /// items 가 비어 있으면 개인정보 동의만으로 신청하는 프로그램입니다. 이미 신청했다면 answer 에 제출한 답이 있습니다.
+    /// 마감된 프로그램도 양식을 볼 수 있습니다. 신청은 이 서버가 대신하지 않으니 url 에서 직접 하도록 안내하세요.
+    #[tool(annotations(read_only_hint = true, open_world_hint = true))]
+    async fn path_application_form(
+        &self,
+        Parameters(req): Parameters<PathDetailRequest>,
+    ) -> ToolResult {
+        let client = self.path().await?;
+        let form = client
+            .application_form(&req.program_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&json!({
+            "url": rusaint_path::program_url(&req.program_id),
+            "items": form.items,
+            "pre_survey": match form.pre_survey_done {
+                None => "none",
+                Some(true) => "done",
+                Some(false) => "required",
+            },
+        }))
+    }
+
+    /// SSU-PATH 비교과 이수증. path_my_applications 에서 certificate 가 있는 program_id 를 넘기세요.
+    /// certificate 가 available(처음)이면 SSU-PATH 화면의 "발급" 버튼처럼 이수증 번호를 새로 등록합니다.
+    /// 원격 커넥터에서는 10분짜리 링크(download_url)를 돌려주며, 로그인 없이 브라우저에서 이수증이 열리니 인쇄(⌘P / Ctrl+P)하거나 PDF 로 저장하라고 안내하세요.
+    /// 로컬에서는 ~/Downloads/ssu-lms/SSU-PATH 이수증/ (또는 RUSAINT_DOWNLOAD_DIR) 에 HTML 로 저장합니다.
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        open_world_hint = true
+    ))]
+    async fn path_certificate(&self, Parameters(req): Parameters<PathDetailRequest>) -> ToolResult {
+        let client = self.path().await?;
+        // 찾는 즉시 멈추므로 신청내역이 여러 페이지여도 끝까지 받지 않습니다.
+        let app = client
+            .find_application(&req.program_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or("나의 신청내역에 이 프로그램이 없습니다. path_my_applications 의 program_id 를 넘겨 주세요.")?;
+        let cert = app
+            .certificate
+            .as_ref()
+            .ok_or("이 프로그램은 아직 이수증을 받을 수 없습니다(이수 처리 전이거나 이수증이 없는 프로그램).")?;
+        let html = client
+            .certificate_html(cert, Local::now().year())
+            .await
+            .map_err(|e| e.to_string())?;
+        let filename = safe_name(&format!("이수증_{}.html", app.title));
+        if self.remote {
+            let links = self.files.as_ref().ok_or(
+                "이 연결에서는 다운로드 링크를 만들 수 없습니다. 커넥터를 다시 연결해 주세요.",
+            )?;
+            let url = links.mint_inline(
+                html.into_bytes(),
+                "text/html; charset=utf-8",
+                filename.clone(),
+            );
+            return to_json(&json!({
+                "download_url": url,
+                "filename": filename,
+                "program": app.title,
+                "expires_in_minutes": files::LINK_TTL.as_secs() / 60,
+                "note": "사용자가 브라우저로 여는 링크입니다. 사용자에게 그대로 보여 주고, 열린 이수증을 인쇄하거나 PDF 로 저장하라고 안내하세요. Claude 의 코드 실행 환경에서는 받을 수 없습니다. 10분 동안 유효하고 링크를 가진 사람은 누구나 열 수 있으니 다른 곳에 옮기지 마세요.",
+            }));
+        }
+        let dest = download_root()?.join("SSU-PATH 이수증").join(&filename);
+        if let Some(dir) = dest.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        std::fs::write(&dest, html).map_err(|e| e.to_string())?;
+        to_json(
+            &json!({ "saved": true, "path": dest, "program": app.title, "note": "브라우저로 열어 인쇄하거나 PDF 로 저장하세요." }),
+        )
     }
 
     /// LMS 학기 목록과 그 학기의 수강 강의 (교수, 수강 상태).
@@ -2187,7 +2606,8 @@ impl SsuServer {
                 )
             }
         };
-        self.prepared(action, summary).await
+        self.prepared(action, summary, "confirm_library_action")
+            .await
     }
 
     /// 스터디룸 예약을 준비합니다. 빈 시간·이용 시간 규칙을 미리 확인합니다.
@@ -2259,8 +2679,12 @@ impl SsuServer {
             companion_ids: req.companion_ids,
             message: req.message,
         };
-        self.prepared(Action::ReserveRoom(reservation), summary)
-            .await
+        self.prepared(
+            Action::ReserveRoom(reservation),
+            summary,
+            "confirm_library_action",
+        )
+        .await
     }
 
     /// 스터디룸 예약 취소·연장을 준비합니다.
@@ -2283,11 +2707,16 @@ impl SsuServer {
                 format!("스터디룸 예약 {charge_id} 을(를) 연장합니다"),
             ),
         };
-        self.prepared(action, summary).await
+        self.prepared(action, summary, "confirm_library_action")
+            .await
     }
 
     /// prepare_* 로 준비하고 사용자가 동의한 도서관 작업을 실행합니다.
-    #[tool(annotations(destructive_hint = true, open_world_hint = true))]
+    #[tool(annotations(
+        destructive_hint = true,
+        idempotent_hint = false,
+        open_world_hint = true
+    ))]
     async fn confirm_library_action(
         &self,
         Parameters(req): Parameters<ConfirmRequest>,
@@ -2319,6 +2748,9 @@ impl SsuServer {
                 ensure_arrival(&client, &charge).await?;
                 client.renew_room(charge_id).await
             }
+            Action::IssueCertificatePdf { .. } => {
+                return Err("증명서 작업은 confirm_certificate_action 으로 실행하세요".into());
+            }
         };
         let data = result.map_err(|e| format!("{summary}: 실패 - {e}"))?;
         to_json(&json!({ "done": summary, "result": data }))
@@ -2348,6 +2780,19 @@ impl SsuServer {
     async fn library_stop_auto_renew(&self) -> ToolResult {
         to_json(&self.automation.stop_renew().await?)
     }
+}
+
+/// 학교가 이 서버를 보는 공개 IP. 증명서 발급은 이 주소로 세션이 묶이므로 서버가 알려 줘야 합니다.
+fn certi_address() -> Result<std::net::IpAddr, String> {
+    std::env::var("RUSAINT_CERTI_IP")
+        .ok()
+        .map(|v| v.trim().to_owned())
+        .filter(|v| !v.is_empty())
+        .ok_or_else(|| {
+            "이 서버에서는 증명서 발급을 쓸 수 없습니다(RUSAINT_CERTI_IP 미설정)".to_string()
+        })?
+        .parse()
+        .map_err(|_| "RUSAINT_CERTI_IP 값이 IP 주소가 아닙니다".to_string())
 }
 
 /// 내려받은 LMS 자료를 두는 곳. `RUSAINT_DOWNLOAD_DIR` 이 있으면 그 경로를 씁니다.

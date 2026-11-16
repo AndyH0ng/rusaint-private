@@ -102,14 +102,37 @@ git tag mcp-v2026.11.05 && git push origin mcp-v2026.11.05
 
 | 파일 | 설치 위치 | 역할 |
 |---|---|---|
-| `rusaint-mcp-tunnel.service` | `/etc/systemd/system/` | Cloudflare quick tunnel (`--metrics 127.0.0.1:20241`) |
+| `rusaint-mcp-tunnel.service` | `/etc/systemd/system/` | Cloudflare quick tunnel. 주소는 `ports.env` 에서 읽습니다 |
 | `rusaint-mcp.service` + `start.sh` | `/etc/systemd/system/`, `/usr/local/lib/rusaint-mcp/` | 서버. `RUSAINT_MCP_PUBLIC_URL` 이 없으면 터널 주소를 씁니다 |
 | `rusaint-mcp-update.{service,timer}` + `update.sh` | 위와 같음 | 5분마다 최신 `mcp-v*` 릴리스를 확인하고 sha256 검증 후 교체 |
+| `ports.env` | `/usr/local/lib/rusaint-mcp/` | 서버 바인드와 터널 메트릭 주소. 두 유닛과 `start.sh` 가 함께 읽는 단일 출처 |
+| `tunnel.sh` | `/usr/local/lib/rusaint-mcp/` | `CLOUDFLARE_TUNNEL_TOKEN` 이 있으면 고정 주소(named tunnel), 없으면 임시 주소 |
+| `rusaint-mcp-alert.service` + `alert.sh` | `/etc/systemd/system/`, `/usr/local/lib/rusaint-mcp/` | 서버가 멈추면(`OnFailure`) 저널에 남기고 `RUSAINT_ALERT_WEBHOOK` 이 있으면 알립니다 |
 
 - `/etc/rusaint-mcp/env`: `RUSAINT_ALLOWED_IDS=…` (고정 도메인이면 `RUSAINT_MCP_PUBLIC_URL=…` 도)
+- 증명서 발급을 쓰려면 같은 파일에 `RUSAINT_CERTI_IP=…` (학교가 보는 이 서버의 공개 IP)
+  와, 자산을 기본 위치에 두지 않을 때 `RUSAINT_CERTI_ASSETS=…`
+- 증명서 자산(`/usr/local/lib/rusaint-mcp/certi/`): `packages/rusaint-certi/report/` 의
+  `certi_report.py`·`cipher.py`·`render.py` 와 `REPORTX.exe`.
+  글꼴은 `apt install fonts-nanum fonts-nanum-coding` 으로 설치하면 자동으로 찾습니다
+  (다른 위치면 `RUSAINT_CERTI_FONTS`). 그래서 서버로 올릴 파일은 `REPORTX.exe` 하나입니다.
+  발급 기록과 만들어 둔 PDF 는 `StateDirectory`(`/var/lib/…/rusaint-mcp/certificates`)에 0600 으로 남습니다
 - `/etc/rusaint-mcp/github-token`: 이 레포 Contents 읽기 전용 fine-grained token (root 600)
 - 서버가 재시작되면(배포, 재부팅) 메모리의 계정이 사라지므로 커넥터를 다시 연결해야 합니다.
   quick tunnel 은 터널이 다시 뜰 때만 주소가 바뀌고, 배포로는 바뀌지 않습니다.
+  주소를 고정하려면 `/etc/rusaint-mcp/env` 에 `CLOUDFLARE_TUNNEL_TOKEN` 과
+  그 도메인의 `RUSAINT_MCP_PUBLIC_URL` 을 넣습니다.
+- `update.sh` 는 교체 전 바이너리를 `rusaint-mcp.previous` 로 남기고, 20초 안에 서비스가
+  올라오지 않으면 되돌립니다. 깨진 태그를 5분마다 다시 설치하지 않도록 태그는 기록합니다.
+- 증명서 기록과 PDF 는 학교 보관 기한과 같은 30일이 지나면 다음 실행 때 지웁니다.
+- 결제·발급 기록을 백업하려면 디스크 스냅샷 일정을 걸 수 있습니다(스냅샷 저장 비용이 듭니다):
+
+  ```sh
+  gcloud compute resource-policies create snapshot-schedule rusaint-mcp-daily \
+    --region us-west1 --max-retention-days 7 --daily-schedule --start-time 18:00
+  gcloud compute disks add-resource-policies rusaint-mcp \
+    --zone us-west1-b --resource-policies rusaint-mcp-daily
+  ```
 - VM 에는 `cloudflared`, `jq`, `curl` 이 필요합니다.
 - LMS 자료 읽기(`lms_read_*`)에는 `markitdown` 과 `poppler-utils` 가 PATH 에 있어야 합니다.
   서비스가 `DynamicUser`·`ProtectHome` 으로 돌기 때문에 홈이 아닌 시스템 경로에 설치합니다.

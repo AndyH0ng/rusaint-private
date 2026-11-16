@@ -32,8 +32,34 @@ api -H "Accept: application/octet-stream" -o "$tmp/$ASSET.sha256" \
   "https://api.github.com/repos/$REPO/releases/assets/$sum_id"
 (cd "$tmp" && sha256sum -c "$ASSET.sha256")
 
+# 새 바이너리가 못 뜨면 되돌릴 수 있도록 지금 것을 남겨 둡니다.
+BACKUP=/usr/local/lib/rusaint-mcp/rusaint-mcp.previous
+if [ -x /usr/local/bin/rusaint-mcp ]; then
+  install -m 755 /usr/local/bin/rusaint-mcp "$BACKUP"
+fi
 install -m 755 "$tmp/$ASSET" /usr/local/bin/rusaint-mcp.new
 mv -f /usr/local/bin/rusaint-mcp.new /usr/local/bin/rusaint-mcp
 systemctl restart rusaint-mcp.service
+
+# 올라오는지 확인하고, 실패하면 이전 바이너리로 되돌립니다.
+ok=false
+for _ in $(seq 1 20); do
+  sleep 1
+  if systemctl is-active --quiet rusaint-mcp.service; then
+    ok=true
+    break
+  fi
+done
+if [ "$ok" != true ]; then
+  echo "$tag 가 올라오지 않았습니다" >&2
+  if [ -x "$BACKUP" ]; then
+    install -m 755 "$BACKUP" /usr/local/bin/rusaint-mcp
+    systemctl restart rusaint-mcp.service || true
+    echo "이전 바이너리로 되돌렸습니다. 이 태그는 다시 시도하지 않도록 기록합니다" >&2
+  fi
+  # 같은 깨진 태그를 5분마다 다시 설치하지 않도록 기록은 남깁니다.
+  echo "$tag" > "$STATE"
+  exit 1
+fi
 echo "$tag" > "$STATE"
 echo "$tag 로 업데이트했습니다 (커넥터를 다시 연결하세요)"

@@ -1,0 +1,8 @@
+[Unit]
+Description=rusaint MCP 서버가 멈췄을 때 알립니다
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/rusaint-mcp/env
+# RUSAINT_ALERT_WEBHOOK 이 있으면 그 주소로 한 줄 보내고, 없으면 저널에만 남깁니다.
+ExecStart=/usr/local/lib/rusaint-mcp/alert.sh

@@ -5,12 +5,15 @@
 
 mod automation;
 mod branding;
+mod certificate;
 mod chapel;
 mod courses;
 mod files;
 mod keychain;
 mod login;
+mod notify;
 mod page;
+mod payments;
 mod pending;
 mod remote;
 mod server;

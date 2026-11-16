@@ -26,6 +26,11 @@ pub use model::*;
 const LMS_GATEWAY_URL: &str = "https://lms.ssu.ac.kr/xn-sso/gw-cb.php";
 const CANVAS_BASE_URL: &str = "https://canvas.ssu.ac.kr";
 const COMMONS_BASE_URL: &str = "https://commons.ssu.ac.kr";
+/// 연결을 재사용하는 시간. 미국 리전에서 학교까지 왕복이 길어, 연결이 식으면
+/// TCP·TLS 를 다시 맺는 데만 왕복 3번이 듭니다. 기본값(90초)보다 길게 둡니다.
+const POOL_IDLE: Duration = Duration::from_secs(5 * 60);
+/// 중간 장비가 조용한 연결을 끊지 않도록 보냅니다.
+const TCP_KEEPALIVE: Duration = Duration::from_secs(60);
 const USER_AGENT: &str = concat!(
     "rusaint-lms/",
     env!("CARGO_PKG_VERSION"),
@@ -39,8 +44,9 @@ const MAX_REDIRECTS: usize = 5;
 /// LMS 오류
 #[derive(Debug, thiserror::Error)]
 pub enum LmsError {
+    /// 요청 오류. 주소는 떼어 낸 뒤 담습니다(아래 `From` 구현).
     #[error("요청 실패: {0}")]
-    Request(#[from] reqwest::Error),
+    Request(reqwest::Error),
     #[error("응답 형식이 예상과 다릅니다: {0}")]
     Decode(#[from] serde_json::Error),
     #[error("파일 저장 실패: {0}")]
@@ -54,6 +60,14 @@ pub enum LmsError {
     Status { status: u16, url: String },
     #[error("자료 다운로드 주소를 찾을 수 없습니다: {0}")]
     NoDownload(String),
+}
+
+/// 로그인 주소에는 SmartID `sToken` 이 들어갑니다. 변환을 한 곳에 두고 주소를 떼어 내므로
+/// `?` 로 올라오는 오류도 주소를 담지 않습니다.
+impl From<reqwest::Error> for LmsError {
+    fn from(error: reqwest::Error) -> Self {
+        Self::Request(error.without_url())
+    }
 }
 
 struct Session {
@@ -78,11 +92,15 @@ impl LmsClient {
         let api = reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .timeout(REQUEST_TIMEOUT)
+            .pool_idle_timeout(POOL_IDLE)
+            .tcp_keepalive(TCP_KEEPALIVE)
             .build()?;
         let files = reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .connect_timeout(REQUEST_TIMEOUT)
             .read_timeout(REQUEST_TIMEOUT)
+            .pool_idle_timeout(POOL_IDLE)
+            .tcp_keepalive(TCP_KEEPALIVE)
             .build()?;
         Ok(Self {
             sso,
@@ -120,6 +138,8 @@ impl LmsClient {
         let http = reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .timeout(REQUEST_TIMEOUT)
+            .pool_idle_timeout(POOL_IDLE)
+            .tcp_keepalive(TCP_KEEPALIVE)
             .cookie_provider(jar.clone())
             .redirect(Policy::none())
             .build()?;
@@ -704,6 +724,25 @@ fn xml_text(xml: &str, tag: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 로그인 주소에는 토큰이 들어가므로 오류 메시지에 주소가 남지 않아야 합니다.
+    #[tokio::test]
+    async fn request_errors_drop_the_url_with_the_token() {
+        // 로컬의 닫힌 포트로 보내 연결 오류를 만듭니다. 외부 통신은 하지 않습니다.
+        let failed = reqwest::Client::new()
+            .get("http://127.0.0.1:1/login?sToken=SECRET-TOKEN&sIdno=20240000")
+            .send()
+            .await
+            .expect_err("연결은 실패해야 합니다");
+        assert!(failed.url().is_some(), "원래 오류에는 주소가 있습니다");
+        let message = LmsError::from(failed).to_string();
+        for leak in ["SECRET-TOKEN", "sToken", "20240000", "127.0.0.1"] {
+            assert!(
+                !message.contains(leak),
+                "{leak} 가 메시지에 남았습니다: {message}"
+            );
+        }
+    }
 
     #[test]
     fn material_urls_support_documents_and_progressive_video() {

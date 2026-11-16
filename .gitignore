@@ -26,6 +26,11 @@ Cargo.lock
 #/target
 /Cargo.lock
 
+# Python and macOS generated files
+__pycache__/
+*.py[cod]
+._*
+
 # dotenv
 **/.env
 

@@ -89,6 +89,7 @@ struct App {
     relink: crate::server::Relink,
     /// LMS 파일 다운로드 링크. 모든 연결이 공유합니다.
     files: crate::files::FileLinks,
+    payments: crate::payments::Payments,
 }
 #[derive(Default)]
 struct Data {
@@ -176,20 +177,24 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("학교 SSO 로그인: 모든 학번 허용 (비밀번호 로그인은 RUSAINT_ALLOWED_IDS 만)");
     }
     let base = base.trim_end_matches('/').to_string();
+    let files = crate::files::FileLinks::new(base.clone());
     let app = App {
+        payments: crate::payments::Payments::new(base.clone(), files.clone()),
         relink: crate::server::Relink::new(base.clone()),
-        files: crate::files::FileLinks::new(base.clone()),
+        files,
         base,
         allowed: Arc::new(allowed),
         sso_open,
         data: Arc::default(),
     };
     let cleanup = app.data.clone();
+    let payments_cleanup = app.payments.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(60));
         loop {
             interval.tick().await;
             cleanup.lock().await.prune();
+            payments_cleanup.prune().await;
         }
     });
     let router = router(app);
@@ -210,6 +215,7 @@ fn allowed_ids(raw: &str) -> Vec<String> {
 
 fn router(app: App) -> Router {
     Router::new()
+        .merge(crate::payments::router(app.payments.clone()))
         .route("/favicon.png", get(favicon))
         .route("/favicon.ico", get(favicon_ico))
         .route("/.well-known/oauth-protected-resource", get(resource))
@@ -232,7 +238,10 @@ fn router(app: App) -> Router {
                 headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
                 headers.insert("referrer-policy", "no-referrer".parse().unwrap());
                 headers.insert("x-content-type-options", "nosniff".parse().unwrap());
-                headers.insert("content-security-policy", crate::page::CSP.parse().unwrap());
+                // 이수증처럼 핸들러가 정한 정책은 그대로 둡니다.
+                headers
+                    .entry(header::CONTENT_SECURITY_POLICY)
+                    .or_insert(crate::page::CSP.parse().unwrap());
                 response
             },
         ))
@@ -242,7 +251,12 @@ fn router(app: App) -> Router {
                 let (method, mut path) =
                     (request.method().clone(), request.uri().path().to_owned());
                 // 경로의 1회용 티켓은 남기지 않습니다.
-                for prefix in ["/sso/callback/", "/everytime/relink/", "/files/"] {
+                for prefix in [
+                    "/sso/callback/",
+                    "/everytime/relink/",
+                    "/files/",
+                    "/certificate-pay/",
+                ] {
                     if path.starts_with(prefix) {
                         path = format!("{prefix}…");
                     }
@@ -763,6 +777,7 @@ async fn sso_everytime(
     let mut server = SsuServer::authenticated(sso, library, everytime).map_err(|_| invalid())?;
     server.set_relink(app.relink.clone());
     server.set_files(app.files.clone());
+    server.set_payments(app.payments.clone());
     server.spawn_keepalive();
     issue_code(&app, auth, server).await
 }
@@ -842,7 +857,14 @@ async fn file_download(State(app): State<App>, Path(ticket): Path<String>) -> Re
             "다운로드 링크는 10분만 쓸 수 있어요. Claude에게 다시 받아 달라고 해 주세요.",
         );
     };
-    let response = match link.target.open(&link.lms).await {
+    let (lms, target) = match &link.source {
+        crate::files::LinkSource::Lms { lms, target } => (lms, target),
+        crate::files::LinkSource::Inline {
+            bytes,
+            content_type,
+        } => return inline_file(&link.filename, bytes.clone(), content_type),
+    };
+    let response = match target.open(lms).await {
         Ok(response) => response,
         Err(e) => {
             eprintln!("파일 다운로드 실패: {e}");
@@ -873,6 +895,27 @@ async fn file_download(State(app): State<App>, Path(ticket): Path<String>) -> Re
     }
     builder
         .body(axum::body::Body::from_stream(response.bytes_stream()))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+/// 서버가 만든 내용(이수증 HTML 등)을 브라우저에서 바로 열리게 보냅니다.
+/// 학교 화면에서 온 HTML 이라 스크립트·폼·외부 연결을 막고, 스타일·이미지는 SSU-PATH 정적 파일만 허용합니다.
+fn inline_file(filename: &str, bytes: std::sync::Arc<[u8]>, content_type: &str) -> Response {
+    let disposition =
+        crate::files::content_disposition(filename).replacen("attachment", "inline", 1);
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::CONTENT_DISPOSITION, disposition)
+        .header(
+            header::CONTENT_SECURITY_POLICY,
+            "default-src 'none'; style-src https://path.ssu.ac.kr 'unsafe-inline'; \
+             img-src https://path.ssu.ac.kr data:; font-src https://path.ssu.ac.kr data:; \
+             base-uri https://path.ssu.ac.kr; form-action 'none'; sandbox",
+        )
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(axum::body::Body::from(axum::body::Bytes::from_owner(bytes)))
         .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
@@ -1037,13 +1080,15 @@ mod tests {
     use axum::body::{Body, to_bytes};
 
     fn app() -> App {
+        let files = crate::files::FileLinks::new("https://mcp.example.com");
         App {
+            payments: crate::payments::Payments::new("https://mcp.example.com", files.clone()),
             base: "https://mcp.example.com".into(),
             allowed: Arc::new(allowed_ids(" 20240000 , ,20249999")),
             sso_open: false,
             data: Arc::default(),
             relink: crate::server::Relink::new("https://mcp.example.com"),
-            files: crate::files::FileLinks::new("https://mcp.example.com"),
+            files,
         }
     }
 
@@ -1081,6 +1126,37 @@ mod tests {
             "만료 전에는 여러 번 받을 수 있어야 합니다"
         );
         assert!(links.get("other").is_none());
+    }
+
+    #[tokio::test]
+    async fn inline_links_open_sandboxed_html() {
+        let app = app();
+        let url = app.files.mint_inline(
+            b"<html><head></head><body>cert</body></html>".to_vec(),
+            "text/html; charset=utf-8",
+            "이수증_대회.html".into(),
+        );
+        let path = url
+            .strip_prefix("https://mcp.example.com")
+            .unwrap()
+            .to_string();
+        let response = router(app)
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let headers = response.headers();
+        assert_eq!(headers[header::CONTENT_TYPE], "text/html; charset=utf-8");
+        assert!(
+            headers[header::CONTENT_DISPOSITION]
+                .to_str()
+                .unwrap()
+                .starts_with("inline;")
+        );
+        let csp = headers[header::CONTENT_SECURITY_POLICY].to_str().unwrap();
+        assert!(csp.contains("sandbox") && csp.contains("default-src 'none'"));
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(&body[..], b"<html><head></head><body>cert</body></html>");
     }
 
     #[test]
@@ -1190,6 +1266,32 @@ mod tests {
             (
                 "9-everytime-relink-error.html",
                 crate::page::everytime_relink("t", true),
+            ),
+            (
+                "10-certificate-pay.html",
+                crate::page::certificate_pay("t", "재학증명서", 1000, "숭실대학교", "일반용"),
+            ),
+            (
+                "11-certificate-pg.html",
+                crate::page::certificate_pg("<input type=hidden name=LGD_OID value=order>"),
+            ),
+            (
+                "12-certificate-status.html",
+                crate::page::certificate_status(
+                    "t",
+                    "결제를 확인했어요. 학교에 발급 등록을 확인하고 있어요.",
+                    None,
+                    true,
+                ),
+            ),
+            (
+                "13-certificate-done.html",
+                crate::page::certificate_status(
+                    "t",
+                    "발급이 끝났어요. 아래에서 PDF 를 받으세요.",
+                    Some("/files/example.pdf"),
+                    false,
+                ),
             ),
         ];
         for (name, html) in pages {

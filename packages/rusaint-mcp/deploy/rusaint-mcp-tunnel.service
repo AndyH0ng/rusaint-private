@@ -5,8 +5,12 @@ Wants=network-online.target
 
 [Service]
 DynamicUser=yes
-# /quicktunnel 이 터널 주소를 알려 줍니다(start.sh 가 읽음). 재시작할 때마다 주소가 바뀝니다.
-ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 --url http://127.0.0.1:3000
+# 주소는 서버 유닛과 같은 ports.env 에서 읽습니다.
+EnvironmentFile=/usr/local/lib/rusaint-mcp/ports.env
+EnvironmentFile=-/etc/rusaint-mcp/env
+# CLOUDFLARE_TUNNEL_TOKEN 이 있으면 고정 주소의 named tunnel 로, 없으면 quick tunnel 로 뜹니다.
+# quick tunnel 은 /quicktunnel 로 주소를 알려 주며(start.sh 가 읽음) 재시작마다 주소가 바뀝니다.
+ExecStart=/usr/local/lib/rusaint-mcp/tunnel.sh
 Restart=always
 RestartSec=5
 

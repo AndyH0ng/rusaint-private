@@ -10,15 +10,29 @@ use tokio::sync::Mutex;
 /// 준비한 작업은 이 시간 안에 확인해야 합니다.
 pub const TTL: Duration = Duration::from_secs(5 * 60);
 
-/// 확인을 기다리는 도서관 쓰기 작업
+/// 확인을 기다리는 쓰기 작업
 #[derive(Debug, Clone)]
 pub enum Action {
-    ReserveSeat { seat_id: u64 },
-    ReturnSeat { charge_id: u64 },
-    RenewSeat { charge_id: u64 },
+    ReserveSeat {
+        seat_id: u64,
+    },
+    ReturnSeat {
+        charge_id: u64,
+    },
+    RenewSeat {
+        charge_id: u64,
+    },
     ReserveRoom(RoomReservation),
-    CancelRoom { charge_id: u64 },
-    RenewRoom { charge_id: u64 },
+    CancelRoom {
+        charge_id: u64,
+    },
+    RenewRoom {
+        charge_id: u64,
+    },
+    /// 보관함의 증명서를 PDF 로 출력. 학교의 남은 출력 매수를 하나 소비합니다.
+    IssueCertificatePdf {
+        document_id: String,
+    },
 }
 
 struct Entry {

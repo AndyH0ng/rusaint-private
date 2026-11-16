@@ -21,6 +21,7 @@ rpassword = "7.5"
 rmcp = { version = "=3.5.1", features = ["server", "transport-io", "macros", "transport-streamable-http-server"] }
 rusaint = { workspace = true }
 rusaint-calendar = { path = "../rusaint-calendar" }
+rusaint-certi = { path = "../rusaint-certi" }
 rusaint-everytime = { path = "../rusaint-everytime" }
 rusaint-library = { path = "../rusaint-library" }
 rusaint-lms = { path = "../rusaint-lms" }
@@ -30,5 +31,6 @@ rusaint-regulation = { path = "../rusaint-regulation" }
 rusaint-sso = { path = "../rusaint-sso" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+regex = "1"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "process", "fs"] }
 reqwest = { version = "0.13", default-features = false, features = ["stream"] }

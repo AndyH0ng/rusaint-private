@@ -82,6 +82,8 @@ impl LibraryClient {
     ) -> Result<Self, LibraryError> {
         let http = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
+            .pool_idle_timeout(std::time::Duration::from_secs(5 * 60))
+            .tcp_keepalive(std::time::Duration::from_secs(60))
             .default_headers(
                 [
                     (reqwest::header::ACCEPT, "application/json"),

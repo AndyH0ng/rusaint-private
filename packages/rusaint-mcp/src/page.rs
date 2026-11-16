@@ -1,4 +1,5 @@
-//! 원격 커넥터 로그인 화면. shadcn/ui(zinc)의 토큰과 Card·Input·Button 모양을 그대로 옮긴 CSS 입니다.
+//! 원격 커넥터 로그인 화면과 증명서 결제 화면. shadcn/ui(zinc)의 토큰과 Card·Input·Button
+//! 모양을 그대로 옮긴 CSS 입니다. 두 화면이 같은 토큰을 쓰므로 UX 가 어긋나지 않습니다.
 //! 외부 리소스를 쓰지 않고, 인라인 스타일·스크립트는 CSP 해시로만 허용합니다.
 
 use std::sync::LazyLock;
@@ -84,10 +85,46 @@ pub static CSP: LazyLock<String> = LazyLock::new(|| {
     )
 });
 
+/// 증명서 결제 화면용 CSP. 폼은 이 서버로만 보냅니다.
+pub static PAY_CSP: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "default-src 'none'; img-src 'self'; style-src {}; script-src {}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+        hash(STYLE),
+        hash(SCRIPT)
+    )
+});
+
+/// 결제창으로 넘기는 화면용 CSP. 이 화면만 PG 로 폼을 보낼 수 있습니다.
+pub static PG_CSP: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "default-src 'none'; img-src 'self'; style-src {}; script-src {} {}; form-action https://checkout.tosspayments.com; frame-ancestors 'none'; base-uri 'none'",
+        hash(STYLE),
+        hash(SCRIPT),
+        hash(PG_SCRIPT)
+    )
+});
+
+/// 결제창으로 자동 제출합니다. 사용자가 버튼을 한 번 더 누르지 않게 하고,
+/// 스크립트가 막힌 환경에서는 버튼이 그대로 보입니다.
+const PG_SCRIPT: &str = r#"var f=document.getElementById("pg");if(f){f.submit()}"#;
+
 fn document(title: &str, body: &str) -> String {
     format!(
         r#"<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="icon" type="image/png" sizes="64x64" href="/favicon.png"><title>{title}</title><style>{STYLE}</style></head><body>{body}</body></html>"#
     )
+}
+
+/// 금액은 천 단위로 끊어 보여 줍니다. 1000 과 10000 을 눈으로 구분할 수 있어야 합니다.
+fn thousands(amount: u32) -> String {
+    let digits = amount.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
 }
 
 fn escape(s: &str) -> String {
@@ -266,4 +303,127 @@ fn card_message(title: &str, detail: &str, action: &str) -> String {
             r#"<main class="card"><div class="header"><h1>{title}</h1><p class="desc">{detail}</p></div>{action}</main>"#
         ),
     )
+}
+
+/// 증명서 결제 첫 화면. 금액과 상품을 그대로 보여 주고 긴급연락처를 받습니다.
+pub fn certificate_pay(
+    ticket: &str,
+    name: &str,
+    amount: u32,
+    receiver: &str,
+    purpose: &str,
+) -> String {
+    let (name, receiver, purpose) = (escape(name), escape(receiver), escape(purpose));
+    let amount = thousands(amount);
+    document(
+        "증명서 발급 결제",
+        &format!(
+            r#"<main class="card">
+<div class="header">
+<h1>{name} 1통<small> · 국문</small></h1>
+<p class="desc">학교가 정한 금액 그대로 결제해요.</p>
+</div>
+<div class="content">
+<div class="scope"><span>{amount}원</span><span>제출기관 {receiver}</span><span>용도 {purpose}</span></div>
+<div class="safe">{LOCK}<div><strong>카드 정보는 이 서버로 오지 않아요</strong><p>결제는 토스페이먼츠 화면에서 직접 하고, 이 서버는 결과만 받아요.</p></div></div>
+<form method="post" action="/certificate-pay/{ticket}/start">
+<div class="field"><label for="phone">긴급연락처</label><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" pattern="010[0-9]{{8}}" placeholder="01012345678" required></div>
+<p class="hint">학교 결제 화면이 요구하는 값이에요. 결제 처리에만 쓰고 서버에 남기지 않아요.</p>
+<button type="submit"><span class="spin"></span><span>{amount}원 결제하기</span></button>
+</form>
+<form method="post" action="/certificate-pay/{ticket}/cancel"><button type="submit" class="secondary">결제 전 신청 취소</button></form>
+<p class="hint">일반 출력 데이터를 PDF 로 만들어 드려요. <b>전자서명 PDF 상품은 아니에요.</b></p>
+</div>
+<p class="footer">결제 전에는 이 화면에서 신청을 취소할 수 있어요.</p>
+</main><script>{SCRIPT}</script>"#
+        ),
+    )
+}
+
+/// 결제창으로 넘기는 화면. 숨은 값은 학교가 만든 주문 그대로입니다.
+pub fn certificate_pg(inputs: &str) -> String {
+    document(
+        "결제창으로 이동",
+        &format!(
+            r#"<main class="card">
+<div class="header">
+<h1>결제창으로 이동해요</h1>
+<p class="desc">토스페이먼츠 화면이 열리지 않으면 아래 버튼을 눌러 주세요.</p>
+</div>
+<div class="content">
+<form method="post" id="pg" action="https://checkout.tosspayments.com/xpay/Request.do">{inputs}
+<button type="submit"><span class="spin"></span><span>토스 결제창 열기</span></button>
+</form>
+</div>
+</main><script>{SCRIPT}</script><script>{PG_SCRIPT}</script>"#
+        ),
+    )
+}
+
+/// 결제·발급 진행 상황 화면. `message` 는 서버가 만든 상태 문구입니다.
+pub fn certificate_status(
+    ticket: &str,
+    message: &str,
+    download: Option<&str>,
+    cancelable: bool,
+) -> String {
+    let download = download
+        .map(|url| {
+            format!(
+                r#"<a class="button" href="{}">PDF 다운로드</a>"#,
+                escape(url)
+            )
+        })
+        .unwrap_or_default();
+    let cancel = if cancelable {
+        format!(
+            r#"<form method="post" action="/certificate-pay/{ticket}/cancel"><button type="submit" class="secondary"><span class="spin"></span><span>결제 전 신청 취소</span></button></form>"#
+        )
+    } else {
+        String::new()
+    };
+    document(
+        "증명서 발급 상태",
+        &format!(
+            r#"<main class="card">
+<div class="header">
+<h1>증명서 발급</h1>
+<p class="desc">{}</p>
+</div>
+<div class="content">
+{download}
+<form method="post" action="/certificate-pay/{ticket}/refresh"><button type="submit"><span class="spin"></span><span>발급 상태 확인</span></button></form>
+{cancel}
+<p class="hint">결제는 됐는데 발급이 보이지 않으면 <b>다시 결제하지 말고</b> 상태 확인을 눌러 주세요. 학교 처리가 익일 오전까지 늦어질 수 있어요.</p>
+</div>
+</main><script>{SCRIPT}</script>"#,
+            escape(message)
+        ),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn amounts_are_grouped() {
+        assert_eq!(thousands(0), "0");
+        assert_eq!(thousands(500), "500");
+        assert_eq!(thousands(1000), "1,000");
+        assert_eq!(thousands(13500), "13,500");
+        assert_eq!(thousands(1234567), "1,234,567");
+    }
+
+    /// 인라인 스타일·스크립트가 CSP 해시와 어긋나면 화면이 통째로 깨집니다.
+    #[test]
+    fn payment_pages_match_their_csp_hashes() {
+        for csp in [&*PAY_CSP, &*PG_CSP] {
+            assert!(csp.contains(&hash(STYLE)), "스타일 해시 불일치");
+            assert!(csp.contains(&hash(SCRIPT)), "스크립트 해시 불일치");
+        }
+        assert!(PG_CSP.contains(&hash(PG_SCRIPT)), "자동 제출 해시 불일치");
+        assert!(PG_CSP.contains("form-action https://checkout.tosspayments.com"));
+        assert!(PAY_CSP.contains("form-action 'self'"));
+    }
 }

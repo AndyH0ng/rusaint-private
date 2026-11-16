@@ -48,10 +48,24 @@ impl FileTarget {
 
 #[derive(Clone)]
 pub struct Link {
-    pub lms: Arc<LmsClient>,
-    pub target: Arc<FileTarget>,
+    pub source: LinkSource,
     pub filename: String,
     until: Instant,
+}
+
+/// 링크가 내보낼 내용
+#[derive(Clone)]
+pub enum LinkSource {
+    /// 받을 때 LMS 에서 흘려보냅니다.
+    Lms {
+        lms: Arc<LmsClient>,
+        target: Arc<FileTarget>,
+    },
+    /// 이미 만든 내용 (SSU-PATH 이수증 HTML 등). 브라우저에서 바로 열립니다.
+    Inline {
+        bytes: Arc<[u8]>,
+        content_type: &'static str,
+    },
 }
 
 /// 다운로드 티켓 저장소. 모든 원격 연결이 하나를 공유합니다.
@@ -71,6 +85,28 @@ impl FileLinks {
 
     /// 이 연결의 LMS 세션에 묶인 티켓을 만들고 다운로드 주소를 돌려줍니다.
     pub fn mint(&self, lms: Arc<LmsClient>, target: FileTarget, filename: String) -> String {
+        let target = Arc::new(target);
+        self.insert(LinkSource::Lms { lms, target }, filename)
+    }
+
+    /// 이미 만든 내용을 내보내는 티켓을 만듭니다.
+    pub fn mint_inline(
+        &self,
+        bytes: impl Into<Arc<[u8]>>,
+        content_type: &'static str,
+        filename: String,
+    ) -> String {
+        let bytes = bytes.into();
+        self.insert(
+            LinkSource::Inline {
+                bytes,
+                content_type,
+            },
+            filename,
+        )
+    }
+
+    fn insert(&self, source: LinkSource, filename: String) -> String {
         let ticket = format!(
             "{}{}",
             uuid::Uuid::new_v4().simple(),
@@ -82,8 +118,7 @@ impl FileLinks {
         links.insert(
             ticket.clone(),
             Link {
-                lms,
-                target: Arc::new(target),
+                source,
                 filename,
                 until: now + LINK_TTL,
             },
@@ -477,15 +512,20 @@ fn split_parts(text: &str) -> Vec<String> {
 }
 
 /// 임시 폴더에 파일을 두고 외부 도구를 부릅니다. 폴더는 끝나면 지웁니다.
-struct TempFile {
-    dir: std::path::PathBuf,
-    path: std::path::PathBuf,
+pub(crate) struct TempFile {
+    pub(crate) dir: std::path::PathBuf,
+    pub(crate) path: std::path::PathBuf,
 }
 
 impl TempFile {
-    async fn new(bytes: &[u8], ext: &str) -> Result<Self, String> {
+    pub(crate) async fn new(bytes: &[u8], ext: &str) -> Result<Self, String> {
         let dir = std::env::temp_dir().join(format!("rusaint-{}", uuid::Uuid::new_v4().simple()));
         tokio::fs::create_dir_all(&dir)
+            .await
+            .map_err(|e| e.to_string())?;
+        // 학교 자료·증명서가 잠시 머무는 곳이라 본인만 읽게 둡니다.
+        #[cfg(unix)]
+        tokio::fs::set_permissions(&dir, std::os::unix::fs::PermissionsExt::from_mode(0o700))
             .await
             .map_err(|e| e.to_string())?;
         let path = dir.join(format!("input.{ext}"));
@@ -502,7 +542,11 @@ impl Drop for TempFile {
     }
 }
 
-async fn run(program: &str, package: &str, args: &[&std::ffi::OsStr]) -> Result<Vec<u8>, String> {
+pub(crate) async fn run(
+    program: &str,
+    package: &str,
+    args: &[&std::ffi::OsStr],
+) -> Result<Vec<u8>, String> {
     let mut command = tokio::process::Command::new(program);
     command.args(args).kill_on_drop(true);
     let output = tokio::time::timeout(TOOL_TIMEOUT, command.output())

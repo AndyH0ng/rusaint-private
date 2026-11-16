@@ -5,7 +5,7 @@
 //!   cargo test -p rusaint-path --test live -- --ignored --nocapture
 //! ```
 
-use rusaint_path::{PathClient, ProgramQuery, eligibility};
+use rusaint_path::{PathClient, ProgramQuery, RecruitStatus, eligibility};
 
 #[tokio::test]
 #[ignore]
@@ -17,7 +17,7 @@ async fn list_programs() {
     let me = client.profile().await.unwrap();
     println!("profile: {me:?}");
     let query = ProgramQuery {
-        recruiting_only: true,
+        status: Some(RecruitStatus::Recruiting),
         grade: me.grade,
         keyword: None,
         page: 1,
